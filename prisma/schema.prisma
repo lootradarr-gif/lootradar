@@ -91,6 +91,21 @@ model Boost {
   @@index([gameId])
 }
 
+// Sosyal katman kullanıcısı — kimlik = Solana cüzdanı (SIWS imzalı giriş).
+model User {
+  wallet      String   @id                    // Solana adresi (PK)
+  displayName String?
+  avatarUrl   String?                          // data URL veya http
+  bio         String   @default("")
+  xp          Int      @default(0)
+  level       Int      @default(1)
+  banned      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([xp])
+}
+
 model Event {
   id        String   @id @default(cuid())
   game      Game?    @relation(fields: [gameId], references: [id], onDelete: SetNull)
