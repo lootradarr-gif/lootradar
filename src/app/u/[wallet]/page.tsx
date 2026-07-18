@@ -2,8 +2,10 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { USER_COOKIE, verifyUserSession } from '@/lib/user-auth';
 import { ProfileHeader, type ProfileData } from '@/components/ProfileHeader';
+import { CommunityFeed } from '@/components/CommunityFeed';
 
 export const dynamic = 'force-dynamic';
+const AUTHOR = { select: { wallet: true, displayName: true, avatarUrl: true, level: true } };
 
 export default async function ProfilePage({ params }: { params: { wallet: string } }) {
   const wallet = params.wallet;
@@ -28,13 +30,22 @@ export default async function ProfilePage({ params }: { params: { wallet: string
     joined: user ? user.createdAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : null,
   };
 
+  const rows = await prisma.post.findMany({
+    where: { authorWallet: wallet },
+    take: 20, orderBy: { createdAt: 'desc' },
+    include: { author: AUTHOR, game: { select: { slug: true, name: true } }, ...(sessionWallet ? { likes: { where: { wallet: sessionWallet }, select: { wallet: true } } } : {}) },
+  });
+  const posts = rows.map((p: any) => ({
+    id: p.id, text: p.text, imageUrl: p.imageUrl, createdAt: p.createdAt.toISOString(),
+    likeCount: p.likeCount, commentCount: p.commentCount, pinned: p.pinned,
+    likedByMe: sessionWallet ? (p.likes?.length ?? 0) > 0 : false, author: p.author, game: p.game,
+  }));
+
   return (
     <div className="mx-auto max-w-2xl pt-8">
       <ProfileHeader profile={profile} isOwner={isOwner} />
-      {/* S2'de: bu kullanıcının postları buraya gelecek */}
-      <div className="card mt-4 p-6 text-center text-sm text-faint">
-        Posts and activity will appear here soon.
-      </div>
+      <h2 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-faint">Posts</h2>
+      <CommunityFeed initial={posts} nextCursor={null} hideComposer />
     </div>
   );
 }

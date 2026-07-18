@@ -63,10 +63,13 @@ model Game {
   featuredUntil DateTime?                   // boost bitiş zamanı (null = süresiz/admin)
   sortWeight   Int          @default(0)     // admin sıralama
   seed         Boolean      @default(false) // ilk tohum kayıtları
+  voteCount    Int          @default(0) // community oyları
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   boosts       Boost[]
   events       Event[]
+  posts        Post[]
+  votes        Vote[]
 
   @@index([reviewStatus])
   @@index([status])
@@ -102,8 +105,76 @@ model User {
   banned      Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  posts       Post[]
+  comments    Comment[]
 
   @@index([xp])
+}
+
+// Community postu (X-tarzı). Yazar = User (cüzdan).
+model Post {
+  id           String     @id @default(cuid())
+  authorWallet String
+  author       User       @relation(fields: [authorWallet], references: [wallet], onDelete: Cascade)
+  text         String
+  imageUrl     String?
+  gameId       String?    // opsiyonel etiketlenen oyun
+  game         Game?      @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  likeCount    Int        @default(0)
+  commentCount Int        @default(0)
+  pinned       Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  comments     Comment[]
+  likes        PostLike[]
+
+  @@index([createdAt])
+  @@index([authorWallet])
+}
+
+model Comment {
+  id           String   @id @default(cuid())
+  postId       String
+  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorWallet String
+  author       User     @relation(fields: [authorWallet], references: [wallet], onDelete: Cascade)
+  text         String
+  createdAt    DateTime @default(now())
+
+  @@index([postId])
+}
+
+model PostLike {
+  postId    String
+  wallet    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([postId, wallet])
+}
+
+// Günlük oyun oyu (1/gün). day = YYYY-MM-DD (UTC).
+model Vote {
+  id          String   @id @default(cuid())
+  gameId      String
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  voterWallet String
+  day         String
+  createdAt   DateTime @default(now())
+
+  @@unique([voterWallet, day])
+  @@index([gameId])
+}
+
+// XP defteri — günlük cap + airdrop denetimi.
+model XpLog {
+  id        String   @id @default(cuid())
+  wallet    String
+  amount    Int
+  reason    String   // post | comment | vote | like_received | daily
+  day       String
+  createdAt DateTime @default(now())
+
+  @@index([wallet, day, reason])
 }
 
 model Event {

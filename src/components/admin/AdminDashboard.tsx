@@ -11,15 +11,17 @@ export type AdminGame = {
   submitterWallet: string | null; contact: string; createdAt: string;
 };
 export type AdminEvent = { id: string; title: string; gameName: string; createdAt: string };
+export type AdminPost = { id: string; text: string; authorName: string; authorWallet: string; likeCount: number; commentCount: number; pinned: boolean; createdAt: string };
+export type AdminUser = { wallet: string; displayName: string | null; xp: number; level: number; banned: boolean };
 
 const STATUSES = ['MAINNET', 'TGE', 'BETA', 'PRE_TOKEN'];
 const badge = (t: string) =>
   t === 'APPROVED' ? 'bg-up/15 text-up' : t === 'REJECTED' ? 'bg-down/15 text-down' : 'bg-gold/15 text-gold';
 
-export function AdminDashboard({ games: initGames, events: initEvents }: { games: AdminGame[]; events: AdminEvent[] }) {
+export function AdminDashboard({ games: initGames, events: initEvents, posts: initPosts = [], users: initUsers = [] }: { games: AdminGame[]; events: AdminEvent[]; posts?: AdminPost[]; users?: AdminUser[] }) {
   const [games, setGames] = useState(initGames);
   const [events, setEvents] = useState(initEvents);
-  const [tab, setTab] = useState<'games' | 'events'>('games');
+  const [tab, setTab] = useState<'games' | 'events' | 'posts' | 'users'>('games');
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [editing, setEditing] = useState<AdminGame | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -74,7 +76,7 @@ export function AdminDashboard({ games: initGames, events: initEvents }: { games
 
       {/* tabs */}
       <div className="mb-4 flex gap-1 border-b border-line">
-        {(['games', 'events'] as const).map((t) => (
+        {(['games', 'events', 'posts', 'users'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold capitalize ${tab === t ? 'border-acc text-ink' : 'border-transparent text-dim hover:text-ink'}`}>
             {t}
@@ -124,6 +126,8 @@ export function AdminDashboard({ games: initGames, events: initEvents }: { games
       )}
 
       {tab === 'events' && <EventsPanel events={events} setEvents={setEvents} />}
+      {tab === 'posts' && <PostsPanel posts={initPosts} />}
+      {tab === 'users' && <UsersPanel users={initUsers} />}
 
       {editing && <EditGame game={editing} onClose={() => setEditing(null)} onSave={patchGame} busy={busy === editing.id} />}
     </div>
@@ -229,6 +233,70 @@ function EventsPanel({ events, setEvents }: { events: AdminEvent[]; setEvents: (
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ── POSTS (moderasyon) ──
+function PostsPanel({ posts: init }: { posts: AdminPost[] }) {
+  const [posts, setPosts] = useState(init);
+  async function pin(id: string, pinned: boolean) {
+    const r = await fetch('/api/admin39/post', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, pinned }) });
+    if (r.ok) setPosts((p) => p.map((x) => (x.id === id ? { ...x, pinned } : x)));
+  }
+  async function del(id: string) {
+    if (!confirm('Delete this post?')) return;
+    const r = await fetch('/api/admin39/post', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) });
+    if (r.ok) setPosts((p) => p.filter((x) => x.id !== id));
+  }
+  if (!posts.length) return <p className="card p-6 text-center text-dim">No posts yet.</p>;
+  return (
+    <div className="space-y-2">
+      {posts.map((p) => (
+        <div key={p.id} className="card p-3">
+          <div className="flex items-center gap-2 text-xs text-faint">
+            <span className="font-semibold text-ink">{p.authorName}</span>
+            {p.pinned && <span className="text-gold">📌</span>}
+            <span>· ♥{p.likeCount} · 💬{p.commentCount}</span>
+            <div className="ml-auto flex gap-1.5">
+              <button onClick={() => pin(p.id, !p.pinned)} className="rounded bg-panel2 px-2 py-1 font-semibold text-dim hover:text-ink">{p.pinned ? 'Unpin' : 'Pin'}</button>
+              <button onClick={() => del(p.id)} className="rounded px-2 py-1 text-down hover:bg-down/10">Delete</button>
+            </div>
+          </div>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{p.text}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── USERS ──
+function UsersPanel({ users: init }: { users: AdminUser[] }) {
+  const [users, setUsers] = useState(init);
+  async function patch(wallet: string, body: any) {
+    const r = await fetch('/api/admin39/user', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet, ...body }) });
+    if (r.ok) { const { user } = await r.json(); setUsers((u) => u.map((x) => (x.wallet === wallet ? { ...x, ...user } : x))); }
+  }
+  if (!users.length) return <p className="card p-6 text-center text-dim">No users yet.</p>;
+  return (
+    <div className="space-y-2">
+      {users.map((u) => (
+        <div key={u.wallet} className="card flex flex-wrap items-center gap-3 p-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-ink">{u.displayName || u.wallet.slice(0, 6) + '…'}</span>
+              <span className="mono text-[10px] text-gold">Lv{u.level}</span>
+              {u.banned && <span className="rounded bg-down/15 px-1.5 py-0.5 text-[10px] font-bold text-down">BANNED</span>}
+            </div>
+            <div className="mono text-xs text-faint">{u.wallet.slice(0, 10)}… · {u.xp} XP</div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <button onClick={() => patch(u.wallet, { xpDelta: 50 })} className="rounded bg-up/10 px-2 py-1 text-xs font-semibold text-up">+50 XP</button>
+            <button onClick={() => patch(u.wallet, { xpDelta: -50 })} className="rounded bg-panel2 px-2 py-1 text-xs font-semibold text-dim">−50 XP</button>
+            <button onClick={() => patch(u.wallet, { banned: !u.banned })} className={`rounded px-2 py-1 text-xs font-semibold ${u.banned ? 'bg-up/10 text-up' : 'bg-down/10 text-down'}`}>{u.banned ? 'Unban' : 'Ban'}</button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

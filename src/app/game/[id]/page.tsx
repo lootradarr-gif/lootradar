@@ -4,6 +4,7 @@ import { getGamesWithMarkets } from '@/lib/games';
 import { chartEmbed } from '@/lib/dexscreener';
 import { price, usd, pct, compact } from '@/lib/format';
 import { GameIcon } from '@/components/GameIcon';
+import { VoteButton } from '@/components/VoteButton';
 
 export const revalidate = 60;
 
@@ -32,7 +33,8 @@ export default async function GamePage({ params }: { params: { id: string } }) {
           </div>
           <p className="mt-1 text-sm text-dim">{g.genre} · Solana</p>
         </div>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <VoteButton slug={g.id} initialCount={g.voteCount ?? 0} />
           {g.site && <a href={g.site} target="_blank" className="btn-primary btn-sm">Play ↗</a>}
           {g.x && <a href={g.x} target="_blank" className="btn-ghost btn-sm">X ↗</a>}
         </div>

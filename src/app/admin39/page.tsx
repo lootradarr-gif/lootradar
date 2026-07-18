@@ -10,9 +10,11 @@ export default async function Admin39() {
   const authed = verifySession(cookies().get(ADMIN_COOKIE)?.value);
   if (!authed) return <AdminLogin />;
 
-  const [rows, evs] = await Promise.all([
+  const [rows, evs, postRows, userRows] = await Promise.all([
     prisma.game.findMany({ orderBy: [{ reviewStatus: 'asc' }, { createdAt: 'desc' }] }),
     prisma.event.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),
+    prisma.post.findMany({ orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }], take: 60, include: { author: { select: { displayName: true, wallet: true } } } }),
+    prisma.user.findMany({ orderBy: { xp: 'desc' }, take: 100 }),
   ]);
 
   const games: AdminGame[] = rows.map((g) => ({
@@ -25,6 +27,11 @@ export default async function Admin39() {
     submitterWallet: g.submitterWallet, contact: g.contact, createdAt: g.createdAt.toISOString(),
   }));
   const events: AdminEvent[] = evs.map((e) => ({ id: e.id, title: e.title, gameName: e.gameName, createdAt: e.createdAt.toISOString() }));
+  const posts = postRows.map((p) => ({
+    id: p.id, text: p.text, authorName: p.author.displayName || p.author.wallet.slice(0, 6) + '…',
+    authorWallet: p.author.wallet, likeCount: p.likeCount, commentCount: p.commentCount, pinned: p.pinned, createdAt: p.createdAt.toISOString(),
+  }));
+  const users = userRows.map((u) => ({ wallet: u.wallet, displayName: u.displayName, xp: u.xp, level: u.level, banned: u.banned }));
 
-  return <AdminDashboard games={games} events={events} />;
+  return <AdminDashboard games={games} events={events} posts={posts} users={users} />;
 }

@@ -22,6 +22,7 @@ export interface Game {
   holders: number;
   boosted?: boolean;        // ücretli öne çıkarma
   rating: number;           // topluluk puanı (0-100 → K formatında)
+  voteCount?: number;       // community günlük oyları
   // mock market (tokenAddress yoksa gösterilir)
   m: { price: number; mcap: number; vol24h: number; change24h: number };
   desc: string;
@@ -84,6 +85,7 @@ export async function getGamesWithMarkets(): Promise<GameWithMarket[]> {
       playersOnline: r.playersOnline,
       holders: r.holders,
       rating: r.rating,
+      voteCount: r.voteCount,
       // boost aktif mi: featured + (süresiz VEYA bitiş gelecekte)
       boosted: r.featured && (!r.featuredUntil || r.featuredUntil > new Date()),
       desc: r.desc,
