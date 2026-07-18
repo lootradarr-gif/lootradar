@@ -10,10 +10,10 @@ function slugify(name: string): string {
   );
 }
 
-// data:image (≤256KB) veya http(s) URL kabul; aksi halde boş.
-function cleanImage(raw: string): string | null {
+// data:image (≤maxKB) veya http(s) URL kabul; null = çok büyük (400 döndür); '' = geçersiz/yok.
+function cleanImage(raw: string, maxKB: number): string | null {
   const v = raw.trim();
-  if (/^data:image\/(png|jpe?g|webp|gif|svg\+xml);base64,/i.test(v)) return v.length <= 256 * 1024 ? v : null;
+  if (/^data:image\/(png|jpe?g|webp|gif|svg\+xml);base64,/i.test(v)) return v.length <= maxKB * 1024 ? v : null;
   if (/^https?:\/\//i.test(v)) return v.slice(0, 500);
   return '';
 }
@@ -46,8 +46,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Please enter a valid contact email.' }, { status: 400 });
   }
 
-  const icon = cleanImage(String(body.iconUrl ?? ''));
+  const icon = cleanImage(String(body.iconUrl ?? ''), 200);
   if (icon === null) return NextResponse.json({ error: 'Icon must be under 200KB.' }, { status: 400 });
+  const banner = cleanImage(String(body.bannerUrl ?? ''), 400);
+  if (banner === null) return NextResponse.json({ error: 'Banner must be under 400KB.' }, { status: 400 });
   const tokenAddress = clean(body.tokenAddress, 64) || null;
 
   // benzersiz slug
@@ -64,6 +66,7 @@ export async function POST(req: Request) {
       genre,
       desc,
       iconUrl: icon || null,
+      bannerUrl: banner || null,
       tokenAddress,
       status: tokenAddress ? 'MAINNET' : 'PRE_TOKEN',
       x: clean(body.x, 200) || null,

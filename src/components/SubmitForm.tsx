@@ -10,19 +10,20 @@ export function SubmitForm() {
   const { publicKey, connected } = useWallet();
   const { setVisible } = useWalletModal();
   const [icon, setIcon] = useState('');       // data URL veya http(s) URL
+  const [banner, setBanner] = useState('');   // kart kapak görseli
   const [state, setState] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle');
   const [err, setErr] = useState('');
 
-  function onIconFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (!f.type.startsWith('image/')) { setErr('Icon must be an image file.'); return; }
-    if (f.size > 200 * 1024) { setErr('Icon must be under 200KB. Try a smaller PNG.'); return; }
+  function readImage(f: File, maxKB: number, set: (v: string) => void, label: string) {
+    if (!f.type.startsWith('image/')) { setErr(`${label} must be an image file.`); return; }
+    if (f.size > maxKB * 1024) { setErr(`${label} must be under ${maxKB}KB. Try a smaller image.`); return; }
     setErr('');
     const reader = new FileReader();
-    reader.onload = () => setIcon(String(reader.result));
+    reader.onload = () => set(String(reader.result));
     reader.readAsDataURL(f);
   }
+  const onIconFile = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) readImage(f, 200, setIcon, 'Icon'); };
+  const onBannerFile = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) readImage(f, 400, setBanner, 'Banner'); };
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -30,12 +31,12 @@ export function SubmitForm() {
     setState('sending'); setErr('');
     const fd = new FormData(e.currentTarget);
     const body = Object.fromEntries(fd.entries());
-    delete (body as any).iconFile; // dosya girdisini gövdeden çıkar
+    delete (body as any).iconFile; delete (body as any).bannerFile; // dosya girdilerini gövdeden çıkar
     try {
       const r = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...body, iconUrl: icon, submitterWallet: publicKey.toBase58() }),
+        body: JSON.stringify({ ...body, iconUrl: icon, bannerUrl: banner, submitterWallet: publicKey.toBase58() }),
       });
       if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error || 'Submission failed');
       setState('ok');
@@ -105,6 +106,34 @@ export function SubmitForm() {
             <p className="text-xs text-faint">Square PNG works best · under 200KB. Shown next to your game everywhere.</p>
           </div>
         </div>
+      </div>
+
+      {/* kart kapak/banner görseli — kartın arkaplanında görünür */}
+      <div>
+        <Label>Card banner <span className="text-faint">(optional)</span></Label>
+        <div className="overflow-hidden rounded-xl border border-line">
+          <div className="relative grid h-32 w-full place-items-center bg-panel2 text-sm text-faint">
+            {banner ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={banner} alt="banner preview" className="h-full w-full object-cover" />
+            ) : (
+              'A wide screenshot / key art — this is the card background'
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 border-t border-line bg-panel p-2">
+            <label className="btn-ghost btn-sm cursor-pointer">
+              Upload banner
+              <input name="bannerFile" type="file" accept="image/*" onChange={onBannerFile} className="hidden" />
+            </label>
+            <input
+              type="url" value={banner.startsWith('data:') ? '' : banner} onChange={(e) => setBanner(e.target.value.trim())}
+              placeholder="…or paste an image URL"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-panel2 px-3 py-1.5 text-sm text-ink outline-none focus:border-acc placeholder:text-faint"
+            />
+            {banner && <button type="button" onClick={() => setBanner('')} className="text-xs text-faint hover:text-down">remove</button>}
+          </div>
+        </div>
+        <p className="mt-1 text-xs text-faint">Landscape (16:9) works best · under 400KB. No banner = a themed gradient is used.</p>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
