@@ -23,5 +23,5 @@ export async function setStatus(id: string, status: Submission['status']): Promi
 }
 
 export function adminSecret(): string {
-  return process.env.LOOTRADAR_ADMIN_SECRET || process.env.SOLGAMES_ADMIN_SECRET || 'change-me';
+  return (process.env.LOOTRADAR_ADMIN_SECRET || process.env.SOLGAMES_ADMIN_SECRET || 'change-me').trim();
 }
