@@ -2,19 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
+/* ── TEMA DEĞİŞKENLERİ (R G B) — gece (default) + gündüz (html.light) ── */
+:root {
+  color-scheme: dark;
+  --c-bg: 10 11 13;
+  --c-panel: 18 19 25;
+  --c-panel2: 24 26 34;
+  --c-line: 37 40 51;
+  --c-line2: 52 57 71;
+  --c-ink: 238 241 246;
+  --c-dim: 154 164 178;
+  --c-faint: 97 107 122;
+  --c-acc: 61 139 255;
+  --c-acc2: 94 176 255;
+  --c-accsoft: 17 32 58;
+  --c-up: 55 214 122;
+  --c-down: 255 92 108;
+  --c-gold: 255 192 70;
+}
+:root.light {
+  color-scheme: light;
+  --c-bg: 246 248 251;
+  --c-panel: 255 255 255;
+  --c-panel2: 240 243 248;
+  --c-line: 224 229 238;
+  --c-line2: 200 207 220;
+  --c-ink: 16 22 31;
+  --c-dim: 82 93 107;
+  --c-faint: 130 140 156;
+  --c-acc: 39 112 235;
+  --c-acc2: 71 150 250;
+  --c-accsoft: 226 237 255;
+  --c-up: 20 160 74;
+  --c-down: 221 55 62;
+  --c-gold: 183 130 0;
+}
 
 html, body {
-  background: #0a0b0d;
-  color: #eef1f6;
+  background: rgb(var(--c-bg));
+  color: rgb(var(--c-ink));
   -webkit-font-smoothing: antialiased;
 }
+html { transition: background-color .25s ease; }
 
 /* ince, sade scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #252833; border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: #343947; }
+::-webkit-scrollbar-thumb { background: rgb(var(--c-line)); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-line2)); }
 
 @layer components {
   .card {
@@ -50,3 +85,49 @@ html, body {
     radial-gradient(55% 45% at 12% -5%, rgba(61,139,255,0.14), transparent 60%),
     radial-gradient(45% 55% at 100% 8%, rgba(94,176,255,0.07), transparent 55%);
 }
+
+/* ── GECE/GÜNDÜZ TOGGLE (sun/moon switch) ── checked = gece */
+.theme-switch .switch { position: relative; display: inline-block; width: 52px; height: 28px; }
+.theme-switch #input { opacity: 0; width: 0; height: 0; }
+.theme-switch .slider {
+  position: absolute; cursor: pointer; inset: 0; background-color: #2196f3;
+  transition: .4s; z-index: 0; overflow: hidden;
+}
+.theme-switch .sun-moon {
+  position: absolute; height: 22px; width: 22px; left: 3px; bottom: 3px;
+  background-color: yellow; transition: .4s;
+}
+.theme-switch #input:checked + .slider { background-color: #0b1020; }
+.theme-switch #input:focus + .slider { box-shadow: 0 0 1px #2196f3; }
+.theme-switch #input:checked + .slider .sun-moon {
+  transform: translateX(24px); background-color: #fff;
+  animation: rotate-center .6s ease-in-out both;
+}
+.theme-switch .moon-dot { opacity: 0; transition: .4s; fill: gray; }
+.theme-switch #input:checked + .slider .sun-moon .moon-dot { opacity: 1; }
+.theme-switch .slider.round { border-radius: 34px; }
+.theme-switch .slider.round .sun-moon { border-radius: 50%; }
+.theme-switch #moon-dot-1 { left: 9px; top: 3px; position: absolute; width: 5px; height: 5px; z-index: 4; }
+.theme-switch #moon-dot-2 { left: 2px; top: 9px; position: absolute; width: 8px; height: 8px; z-index: 4; }
+.theme-switch #moon-dot-3 { left: 14px; top: 15px; position: absolute; width: 3px; height: 3px; z-index: 4; }
+.theme-switch #light-ray-1 { left: -7px; top: -7px; position: absolute; width: 36px; height: 36px; z-index: -1; fill: white; opacity: .1; }
+.theme-switch #light-ray-2 { left: -12px; top: -12px; position: absolute; width: 46px; height: 46px; z-index: -1; fill: white; opacity: .1; }
+.theme-switch #light-ray-3 { left: -15px; top: -15px; position: absolute; width: 52px; height: 52px; z-index: -1; fill: white; opacity: .1; }
+.theme-switch .cloud-light { position: absolute; fill: #eee; animation: cloud-move 6s infinite; }
+.theme-switch .cloud-dark { position: absolute; fill: #ccc; animation: cloud-move 6s infinite; animation-delay: 1s; }
+.theme-switch #cloud-1 { left: 26px; top: 13px; width: 34px; }
+.theme-switch #cloud-2 { left: 38px; top: 9px; width: 17px; }
+.theme-switch #cloud-3 { left: 15px; top: 20px; width: 26px; }
+.theme-switch #cloud-4 { left: 31px; top: 15px; width: 34px; }
+.theme-switch #cloud-5 { left: 41px; top: 12px; width: 17px; }
+.theme-switch #cloud-6 { left: 19px; top: 22px; width: 26px; }
+@keyframes cloud-move { 0% { transform: translateX(0); } 40% { transform: translateX(4px); } 80% { transform: translateX(-4px); } 100% { transform: translateX(0); } }
+.theme-switch .stars { transform: translateY(-28px); opacity: 0; transition: .4s; }
+.theme-switch .star { fill: white; position: absolute; transition: .4s; animation: star-twinkle 2s infinite; }
+.theme-switch #input:checked + .slider .stars { transform: translateY(0); opacity: 1; }
+.theme-switch #star-1 { width: 17px; top: 2px; left: 3px; animation-delay: .3s; }
+.theme-switch #star-2 { width: 5px; top: 14px; left: 3px; }
+.theme-switch #star-3 { width: 10px; top: 17px; left: 9px; animation-delay: .6s; }
+.theme-switch #star-4 { width: 15px; top: 0; left: 16px; animation-delay: 1.3s; }
+@keyframes star-twinkle { 0% { transform: scale(1); } 40% { transform: scale(1.2); } 80% { transform: scale(.8); } 100% { transform: scale(1); } }
+@keyframes rotate-center { 0% { transform: translateX(24px) rotate(0deg); } 100% { transform: translateX(24px) rotate(360deg); } }

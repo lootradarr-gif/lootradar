@@ -43,10 +43,10 @@ export function GameCard({ g }: { g: GameWithMarket }) {
       </div>
 
       {/* ── GÖVDE ── */}
-      <div className="p-4 pt-0">
+      <div className="p-4 pt-3">
         <div className="flex items-center gap-2.5">
-          <GameIcon g={g} className="-mt-6 h-12 w-12 rounded-xl text-xl shadow-card ring-2 ring-panel" />
-          <div className="min-w-0 flex-1 pt-1">
+          <GameIcon g={g} className="h-11 w-11 rounded-xl text-lg" />
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <h3 className="truncate font-semibold text-ink group-hover:text-acc">{g.name}</h3>
               {g.live && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-acc" title="live market data" />}

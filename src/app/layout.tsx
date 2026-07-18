@@ -19,6 +19,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body className="min-h-screen bg-bg font-sans text-ink antialiased">
+        {/* tema flash'ını önle: paint'ten önce html.light sınıfını uygula */}
+        <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}" }} />
         <SolanaProvider>
         <Nav />
         <Ticker items={EVENTS.slice(0, 8).map((e) => ({ text: `${e.title}`, tag: e.game, at: e.at }))} />

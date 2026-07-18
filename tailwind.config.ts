@@ -1,26 +1,29 @@
 import type { Config } from 'tailwindcss';
 
-// solgames tasarım sistemi — nötr grafit zemin + elektrik mavisi tek vurgu, gradient pill butonlar.
-// (Not: solgames.buzz'dan ayrışması için teal→mavi, mavi-siyah→nötr grafit, köşeli→pill.)
+// LootRadar tasarım sistemi — renkler CSS değişkenlerine bağlı (globals.css :root / :root.light).
+// Böylece gece/gündüz teması tek sınıf değişimiyle (html.light) çalışır. Opacity modifier'ları
+// (bg-panel/60 vb.) için değerler "R G B" formatında + rgb(var() / <alpha-value>).
+const c = (name: string) => `rgb(var(--c-${name}) / <alpha-value>)`;
+
 const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        bg: '#0a0b0d',        // sayfa zemini (nötr near-black, mavi tint YOK)
-        panel: '#121319',     // kart zemini
-        panel2: '#181a22',    // ikincil kart
-        line: '#252833',      // kenarlık
-        line2: '#343947',     // hover kenarlık
-        ink: '#eef1f6',       // ana metin
-        dim: '#9aa4b2',       // ikincil metin
-        faint: '#616b7a',     // en soluk
-        acc: '#3d8bff',       // vurgu (elektrik mavisi)
-        acc2: '#5eb0ff',      // vurgu-açık (gradient bitişi)
-        accSoft: '#11203a',   // vurgu-soft zemin
-        up: '#37d67a',        // yeşil (gainer)
-        down: '#ff5c6c',      // kırmızı (loser)
-        gold: '#ffc046',      // boost/star
+        bg: c('bg'),
+        panel: c('panel'),
+        panel2: c('panel2'),
+        line: c('line'),
+        line2: c('line2'),
+        ink: c('ink'),
+        dim: c('dim'),
+        faint: c('faint'),
+        acc: c('acc'),
+        acc2: c('acc2'),
+        accSoft: c('accsoft'),
+        up: c('up'),
+        down: c('down'),
+        gold: c('gold'),
       },
       fontFamily: {
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
