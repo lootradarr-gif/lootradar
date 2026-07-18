@@ -1,6 +1,7 @@
 // Oyun kayıtları — ileride DB'den (Prisma) gelecek. Şimdilik seed (mock market + opsiyonel tokenAddress).
 // tokenAddress DOLU ise DexScreener'dan CANLI veri gelir ve mock'un üstüne yazılır (mergeMarkets).
 import { fetchMarkets, type TokenMarket } from './dexscreener';
+import { prisma } from './prisma';
 
 export type GameStatus = 'MAINNET' | 'TGE' | 'BETA' | 'PRE-TOKEN';
 
@@ -11,6 +12,7 @@ export interface Game {
   genre: string;
   icon: string;             // emoji (iconUrl yoksa fallback)
   iconUrl?: string;         // proje logosu (http(s) veya data URL) — varsa emoji yerine gösterilir
+  bannerUrl?: string;       // kart kapak/arkaplan görseli
   status: GameStatus;
   chain: string;            // 'solana'
   tokenAddress?: string;    // dolu → DexScreener canlı veri
@@ -49,19 +51,46 @@ export interface GameWithMarket extends Game {
   pairAddress: string | null;
 }
 
-export async function getGamesWithMarkets(): Promise<GameWithMarket[]> {
-  const addrs = GAMES.map((g) => g.tokenAddress).filter(Boolean) as string[];
-  let live: Record<string, TokenMarket> = {};
-  try { live = await fetchMarkets(addrs); } catch { /* dış API hatası → hepsi mock kalır */ }
+// DB enum (PRE_TOKEN) → görüntü statüsü ('PRE-TOKEN')
+function dbStatus(s: string): GameStatus {
+  return s === 'PRE_TOKEN' ? 'PRE-TOKEN' : (s as GameStatus);
+}
 
-  return GAMES.map((g) => {
-    const lm = g.tokenAddress ? live[g.tokenAddress] : undefined;
+// CANLI KAYNAK: onaylı oyunları Neon DB'den çeker; tokenAddress varsa DexScreener canlı verisi bindirilir.
+export async function getGamesWithMarkets(): Promise<GameWithMarket[]> {
+  const rows = await prisma.game.findMany({
+    where: { reviewStatus: 'APPROVED' },
+    orderBy: [{ featured: 'desc' }, { sortWeight: 'desc' }, { createdAt: 'asc' }],
+  });
+  const addrs = rows.map((r) => r.tokenAddress).filter(Boolean) as string[];
+  let live: Record<string, TokenMarket> = {};
+  try { live = await fetchMarkets(addrs); } catch { /* dış API hatası → mock kalır */ }
+
+  return rows.map((r) => {
+    const lm = r.tokenAddress ? live[r.tokenAddress] : undefined;
     return {
-      ...g,
+      id: r.slug,
+      name: r.name,
+      ticker: r.ticker,
+      genre: r.genre,
+      icon: r.icon,
+      iconUrl: r.iconUrl ?? undefined,
+      bannerUrl: r.bannerUrl ?? undefined,
+      status: dbStatus(r.status),
+      chain: r.chain,
+      tokenAddress: r.tokenAddress ?? undefined,
+      x: r.x ?? undefined,
+      site: r.site ?? undefined,
+      playersOnline: r.playersOnline,
+      holders: r.holders,
+      rating: r.rating,
+      boosted: r.featured,
+      desc: r.desc,
+      m: { price: r.mockPrice ?? 0, mcap: r.mockMcap ?? 0, vol24h: r.mockVol24h ?? 0, change24h: r.mockChange24h ?? 0 },
       live: !!lm,
       market: lm
         ? { price: lm.priceUsd, mcap: lm.marketCap, vol24h: lm.volume24h, change24h: lm.change24h }
-        : g.m,
+        : { price: r.mockPrice ?? 0, mcap: r.mockMcap ?? 0, vol24h: r.mockVol24h ?? 0, change24h: r.mockChange24h ?? 0 },
       dexUrl: lm?.dexUrl ?? null,
       pairAddress: lm?.pairAddress ?? null,
     };

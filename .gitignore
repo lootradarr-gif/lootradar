@@ -11,3 +11,6 @@
 
 # local submission store (dev only — moves to DB later)
 /data
+
+.vercel
+.env*.local

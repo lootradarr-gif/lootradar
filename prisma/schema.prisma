@@ -1,0 +1,102 @@
+// LootRadar veri modeli — Neon Postgres (serverless). Prisma.
+// db push ile şema uygulanır (migration klasörü yok; erken aşama).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum GameStatus {
+  MAINNET
+  TGE
+  BETA
+  PRE_TOKEN
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BoostStatus {
+  PENDING_PAYMENT // bid oluşturuldu, on-chain ödeme bekleniyor
+  QUEUED          // ödendi, sırada (daha yüksek bid yayında)
+  LIVE            // şu an site-genelinde yayında
+  CONSUMED        // impression'ları tükendi
+  CANCELLED       // kullanıcı/iptal
+  REJECTED        // admin reddetti / ödeme doğrulanamadı
+}
+
+model Game {
+  id           String       @id @default(cuid())
+  slug         String       @unique
+  name         String
+  ticker       String       @default("")
+  genre        String       @default("other")
+  desc         String       @default("")
+  icon         String       @default("🎮") // emoji fallback
+  iconUrl      String?      // proje logosu (data URL veya http)
+  bannerUrl    String?      // kart arkaplanı / kapak görseli
+  status       GameStatus   @default(PRE_TOKEN)
+  chain        String       @default("solana")
+  tokenAddress String?      // dolu → DexScreener canlı veri
+  x            String?
+  site         String?
+  playersOnline Int         @default(0)
+  holders      Int          @default(0)
+  rating       Int          @default(0)
+  // token yoksa gösterilecek demo market değerleri (tokenAddress varsa DexScreener kazanır)
+  mockPrice    Float?
+  mockMcap     Float?
+  mockVol24h   Float?
+  mockChange24h Float?
+  reviewStatus ReviewStatus @default(PENDING)
+  submitterWallet String?
+  contact      String       @default("")
+  featured     Boolean      @default(false) // admin öne çıkarma
+  sortWeight   Int          @default(0)     // admin sıralama
+  seed         Boolean      @default(false) // ilk tohum kayıtları
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  boosts       Boost[]
+  events       Event[]
+
+  @@index([reviewStatus])
+  @@index([status])
+}
+
+model Boost {
+  id               String      @id @default(cuid())
+  game             Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId           String
+  bidderWallet     String
+  bidSolPer1k      Float       // SOL / 1000 impression
+  impressions      Int         // satın alınan toplam impression
+  impressionsServed Int        @default(0)
+  paidSol          Float       @default(0)
+  status           BoostStatus @default(PENDING_PAYMENT)
+  txSignature      String?     @unique
+  createdAt        DateTime    @default(now())
+  activatedAt      DateTime?
+  endedAt          DateTime?
+
+  @@index([status, bidSolPer1k])
+  @@index([gameId])
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  game      Game?    @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  gameId    String?
+  gameName  String   @default("") // gameId yoksa serbest metin
+  title     String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
