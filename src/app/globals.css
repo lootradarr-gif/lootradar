@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+html, body {
+  background: #0a0b0d;
+  color: #eef1f6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ince, sade scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #252833; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #343947; }
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-panel;
+  }
+  .card-hover {
+    @apply transition-colors hover:border-line2 hover:bg-panel2;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-xs font-medium text-dim;
+  }
+  .mono { font-variant-numeric: tabular-nums; @apply font-mono; }
+
+  /* buton dili — pill + gradient (solgames'in köşeli düz butonlarından ayrışır) */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold transition-all;
+  }
+  .btn-primary {
+    @apply btn bg-acc text-white shadow-glow hover:brightness-110 active:scale-[0.98];
+  }
+  .btn-ghost {
+    @apply btn border border-line bg-panel/60 text-ink hover:border-line2 hover:bg-panel2;
+  }
+  .btn-gold {
+    @apply btn border border-gold/40 bg-gold/[0.08] text-gold hover:bg-gold/[0.14];
+  }
+  .btn-sm { @apply px-3.5 py-1.5 text-sm; }
+}
+
+/* radial arka plan parıltısı — hero için (mavi) */
+.hero-glow {
+  background:
+    radial-gradient(55% 45% at 12% -5%, rgba(61,139,255,0.14), transparent 60%),
+    radial-gradient(45% 55% at 100% 8%, rgba(94,176,255,0.07), transparent 55%);
+}
