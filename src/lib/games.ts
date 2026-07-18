@@ -84,7 +84,8 @@ export async function getGamesWithMarkets(): Promise<GameWithMarket[]> {
       playersOnline: r.playersOnline,
       holders: r.holders,
       rating: r.rating,
-      boosted: r.featured,
+      // boost aktif mi: featured + (süresiz VEYA bitiş gelecekte)
+      boosted: r.featured && (!r.featuredUntil || r.featuredUntil > new Date()),
       desc: r.desc,
       m: { price: r.mockPrice ?? 0, mcap: r.mockMcap ?? 0, vol24h: r.mockVol24h ?? 0, change24h: r.mockChange24h ?? 0 },
       live: !!lm,

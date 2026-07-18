@@ -59,7 +59,8 @@ model Game {
   reviewStatus ReviewStatus @default(PENDING)
   submitterWallet String?
   contact      String       @default("")
-  featured     Boolean      @default(false) // admin öne çıkarma
+  featured     Boolean      @default(false) // öne çıkarma (admin manuel VEYA boost)
+  featuredUntil DateTime?                   // boost bitiş zamanı (null = süresiz/admin)
   sortWeight   Int          @default(0)     // admin sıralama
   seed         Boolean      @default(false) // ilk tohum kayıtları
   createdAt    DateTime     @default(now())
