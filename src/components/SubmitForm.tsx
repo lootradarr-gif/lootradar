@@ -1,15 +1,14 @@
 'use client';
 import { useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { shortAddr } from '@/lib/format';
 
 const GENRES = ['mine-to-earn', 'mmo', 'rpg', 'idle-rpg', 'strategy', 'shooter', 'tcg', 'farming', 'survival', 'sports', 'casino', 'other'];
-const TIERS = [
-  { id: 'free', label: 'Free listing', note: '0 SOL' },
-  { id: 'boost', label: 'Boost', note: '1 SOL / wk' },
-  { id: 'featured', label: 'Featured', note: '3 SOL / wk' },
-];
 
-export function SubmitForm({ defaultTier = 'free' }: { defaultTier?: string }) {
-  const [tier, setTier] = useState(defaultTier);
+export function SubmitForm() {
+  const { publicKey, connected } = useWallet();
+  const { setVisible } = useWalletModal();
   const [icon, setIcon] = useState('');       // data URL veya http(s) URL
   const [state, setState] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle');
   const [err, setErr] = useState('');
@@ -27,12 +26,17 @@ export function SubmitForm({ defaultTier = 'free' }: { defaultTier?: string }) {
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!connected || !publicKey) { setErr('Connect your wallet first.'); return; }
     setState('sending'); setErr('');
     const fd = new FormData(e.currentTarget);
     const body = Object.fromEntries(fd.entries());
     delete (body as any).iconFile; // dosya girdisini gövdeden çıkar
     try {
-      const r = await fetch('/api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...body, tier, iconUrl: icon }) });
+      const r = await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...body, iconUrl: icon, submitterWallet: publicKey.toBase58() }),
+      });
       if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error || 'Submission failed');
       setState('ok');
     } catch (e: any) {
@@ -45,26 +49,32 @@ export function SubmitForm({ defaultTier = 'free' }: { defaultTier?: string }) {
       <div className="card grid place-items-center p-12 text-center">
         <div className="text-4xl">✅</div>
         <h2 className="mt-3 text-xl font-bold">Submission received</h2>
-        <p className="mt-2 max-w-sm text-sm text-dim">Thanks! We’ll review your game and add it to the board — usually within 24 hours. If you picked a paid tier, we’ll email payment instructions.</p>
+        <p className="mt-2 max-w-sm text-sm text-dim">Thanks! We’ll review your game and add it to the board — usually within 24 hours. Want the top slot? Boost your game from the Boost page once it’s live.</p>
         <a href="/" className="btn-primary mt-6">Back to Explore</a>
+      </div>
+    );
+  }
+
+  // Cüzdan bağlı değilse form yerine bağlanma isteği göster (giriş şartı).
+  if (!connected) {
+    return (
+      <div className="card grid place-items-center gap-4 p-12 text-center">
+        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-accSoft text-2xl">🔗</div>
+        <div>
+          <h2 className="text-xl font-bold">Connect your wallet to list a game</h2>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-dim">Your Solana wallet verifies you as the submitter. Listing is free — connecting doesn’t cost anything.</p>
+        </div>
+        <button onClick={() => setVisible(true)} className="btn-primary">Connect Wallet</button>
       </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
-      {/* tier */}
-      <div>
-        <Label>Plan</Label>
-        <div className="grid grid-cols-3 gap-2">
-          {TIERS.map((t) => (
-            <button type="button" key={t.id} onClick={() => setTier(t.id)}
-              className={`rounded-xl border p-3 text-left transition-colors ${tier === t.id ? 'border-acc bg-accSoft/40' : 'border-line bg-panel hover:border-line2'}`}>
-              <div className="text-sm font-semibold text-ink">{t.label}</div>
-              <div className="mono text-xs text-dim">{t.note}</div>
-            </button>
-          ))}
-        </div>
+      {/* bağlı cüzdan */}
+      <div className="flex items-center gap-2 rounded-xl border border-line bg-panel2/50 px-3 py-2 text-xs text-dim">
+        <span className="h-1.5 w-1.5 rounded-full bg-up" /> Listing as{' '}
+        <span className="mono text-ink">{publicKey ? shortAddr(publicKey.toBase58()) : ''}</span>
       </div>
 
       {/* proje ikonu — listelerde bu logo görünür */}
@@ -128,9 +138,9 @@ export function SubmitForm({ defaultTier = 'free' }: { defaultTier?: string }) {
       {state === 'err' && <p className="rounded-lg border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">{err}</p>}
 
       <button disabled={state === 'sending'} className="btn-primary w-full disabled:opacity-60">
-        {state === 'sending' ? 'Submitting…' : tier === 'free' ? 'Submit game — free' : `Submit & continue to payment (${TIERS.find((t) => t.id === tier)?.note})`}
+        {state === 'sending' ? 'Submitting…' : 'Submit game — free'}
       </button>
-      <p className="text-center text-xs text-faint">Free listings are reviewed manually. Paid tiers activate after on-chain payment.</p>
+      <p className="text-center text-xs text-faint">Listings are free and reviewed manually. Boosting for the top slot is separate.</p>
     </form>
   );
 }

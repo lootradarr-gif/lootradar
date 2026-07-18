@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { WalletButton } from './WalletButton';
 
 const LINKS = [
   { href: '/', label: 'Explore' },
@@ -25,7 +26,8 @@ export function Nav() {
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <Link href="/boost" className="hidden rounded-full px-3 py-1.5 text-sm font-semibold text-gold transition-colors hover:bg-panel sm:inline-flex">⚡ Boost</Link>
-          <Link href="/submit" className="btn-primary btn-sm">List your game</Link>
+          <Link href="/submit" className="btn-ghost btn-sm hidden sm:inline-flex">List your game</Link>
+          <WalletButton compact />
         </div>
       </div>
     </header>

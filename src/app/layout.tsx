@@ -4,6 +4,7 @@ import './globals.css';
 import { Nav } from '@/components/Nav';
 import { Ticker } from '@/components/Ticker';
 import { EVENTS } from '@/lib/feed';
+import { SolanaProvider } from '@/components/WalletProvider';
 
 const sans = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body className="min-h-screen bg-bg font-sans text-ink antialiased">
+        <SolanaProvider>
         <Nav />
         <Ticker items={EVENTS.slice(0, 8).map((e) => ({ text: `${e.title}`, tag: e.game, at: e.at }))} />
         <main className="mx-auto w-full max-w-[1240px] px-4 pb-24 sm:px-6">{children}</main>
@@ -36,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
           <p className="mt-6 text-xs text-faint">Market data via DexScreener. Not financial advice. Player counts are self-reported by projects.</p>
         </footer>
+        </SolanaProvider>
       </body>
     </html>
   );

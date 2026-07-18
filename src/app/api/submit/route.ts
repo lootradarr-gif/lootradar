@@ -1,7 +1,22 @@
 import { NextResponse } from 'next/server';
-import { addSubmission } from '@/lib/submissions';
+import { prisma } from '@/lib/prisma';
 
 const clean = (v: unknown, max = 400) => String(v ?? '').trim().slice(0, max);
+
+function slugify(name: string): string {
+  return (
+    name.toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) ||
+    'game'
+  );
+}
+
+// data:image (≤256KB) veya http(s) URL kabul; aksi halde boş.
+function cleanImage(raw: string): string | null {
+  const v = raw.trim();
+  if (/^data:image\/(png|jpe?g|webp|gif|svg\+xml);base64,/i.test(v)) return v.length <= 256 * 1024 ? v : null;
+  if (/^https?:\/\//i.test(v)) return v.slice(0, 500);
+  return '';
+}
 
 export async function POST(req: Request) {
   let body: Record<string, unknown>;
@@ -16,7 +31,11 @@ export async function POST(req: Request) {
   const desc = clean(body.desc, 200);
   const contact = clean(body.contact, 120);
   const genre = clean(body.genre, 40);
+  const submitterWallet = clean(body.submitterWallet, 64);
 
+  if (!submitterWallet || submitterWallet.length < 32) {
+    return NextResponse.json({ error: 'Connect your wallet first.' }, { status: 401 });
+  }
   if (!name || !site || !desc || !contact || !genre) {
     return NextResponse.json({ error: 'Please fill in all required fields.' }, { status: 400 });
   }
@@ -27,30 +46,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Please enter a valid contact email.' }, { status: 400 });
   }
 
-  const tier = ['free', 'boost', 'featured'].includes(clean(body.tier)) ? clean(body.tier) : 'free';
+  const icon = cleanImage(String(body.iconUrl ?? ''));
+  if (icon === null) return NextResponse.json({ error: 'Icon must be under 200KB.' }, { status: 400 });
+  const tokenAddress = clean(body.tokenAddress, 64) || null;
 
-  // ikon: data:image/... (≤256KB) veya http(s) URL — aksi halde yok sayılır
-  const rawIcon = String(body.iconUrl ?? '').trim();
-  let iconUrl = '';
-  if (/^data:image\/(png|jpe?g|webp|gif|svg\+xml);base64,/i.test(rawIcon)) {
-    if (rawIcon.length <= 256 * 1024) iconUrl = rawIcon;
-    else return NextResponse.json({ error: 'Icon must be under 200KB.' }, { status: 400 });
-  } else if (/^https?:\/\//i.test(rawIcon)) {
-    iconUrl = rawIcon.slice(0, 400);
+  // benzersiz slug
+  let slug = slugify(name);
+  if (await prisma.game.findUnique({ where: { slug } })) {
+    slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
   }
 
-  const row = await addSubmission({
-    name,
-    ticker: clean(body.ticker, 20).replace(/^\$/, ''),
-    genre,
-    tokenAddress: clean(body.tokenAddress, 64),
-    iconUrl,
-    site,
-    x: clean(body.x, 200),
-    desc,
-    contact,
-    tier,
+  const game = await prisma.game.create({
+    data: {
+      slug,
+      name,
+      ticker: clean(body.ticker, 20).replace(/^\$/, ''),
+      genre,
+      desc,
+      iconUrl: icon || null,
+      tokenAddress,
+      status: tokenAddress ? 'MAINNET' : 'PRE_TOKEN',
+      x: clean(body.x, 200) || null,
+      site,
+      contact,
+      submitterWallet,
+      reviewStatus: 'PENDING',
+    },
+    select: { id: true, slug: true },
   });
 
-  return NextResponse.json({ ok: true, id: row.id });
+  return NextResponse.json({ ok: true, id: game.id, slug: game.slug });
 }
