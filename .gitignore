@@ -5,6 +5,9 @@
 .DS_Store
 *.pem
 
+# typescript incremental build cache
+tsconfig.tsbuildinfo
+
 # env
 .env
 .env*.local
