@@ -3,25 +3,36 @@ import { useMemo, useState } from 'react';
 
 export type AdminGame = {
   id: string; slug: string; name: string; ticker: string; genre: string; desc: string;
+  about: string; onlineApiUrl: string | null; discord: string | null; telegram: string | null;
   icon: string; iconUrl: string | null; bannerUrl: string | null;
   status: string; tokenAddress: string | null; x: string | null; site: string | null;
   playersOnline: number; holders: number; rating: number;
   mockPrice: number | null; mockMcap: number | null; mockVol24h: number | null; mockChange24h: number | null;
-  reviewStatus: string; featured: boolean; sortWeight: number;
+  reviewStatus: string; featured: boolean; featuredUntil: string | null; verified: boolean; sortWeight: number;
   submitterWallet: string | null; contact: string; createdAt: string;
 };
+// boost yardımcıları
+const isBoosted = (g: AdminGame) => g.featured && (!g.featuredUntil || new Date(g.featuredUntil) > new Date());
+function boostLeft(g: AdminGame): string {
+  if (!g.featuredUntil) return '∞';
+  const ms = new Date(g.featuredUntil).getTime() - Date.now();
+  if (ms <= 0) return 'expired';
+  const d = Math.floor(ms / 86_400_000), h = Math.floor((ms % 86_400_000) / 3_600_000);
+  return d > 0 ? `${d}d ${h}h` : `${h}h`;
+}
 export type AdminEvent = { id: string; title: string; gameName: string; createdAt: string };
-export type AdminPost = { id: string; text: string; authorName: string; authorWallet: string; likeCount: number; commentCount: number; pinned: boolean; createdAt: string };
+export type AdminPost = { id: string; text: string; authorName: string; authorWallet: string; gameName?: string | null; likeCount: number; commentCount: number; pinned: boolean; createdAt: string };
+export type AdminComment = { id: string; text: string; authorName: string; authorWallet: string; gameName?: string | null; createdAt: string };
 export type AdminUser = { wallet: string; displayName: string | null; xp: number; level: number; banned: boolean };
 
 const STATUSES = ['MAINNET', 'TGE', 'BETA', 'PRE_TOKEN'];
 const badge = (t: string) =>
   t === 'APPROVED' ? 'bg-up/15 text-up' : t === 'REJECTED' ? 'bg-down/15 text-down' : 'bg-gold/15 text-gold';
 
-export function AdminDashboard({ games: initGames, events: initEvents, posts: initPosts = [], users: initUsers = [] }: { games: AdminGame[]; events: AdminEvent[]; posts?: AdminPost[]; users?: AdminUser[] }) {
+export function AdminDashboard({ games: initGames, events: initEvents, posts: initPosts = [], users: initUsers = [], comments: initComments = [] }: { games: AdminGame[]; events: AdminEvent[]; posts?: AdminPost[]; users?: AdminUser[]; comments?: AdminComment[] }) {
   const [games, setGames] = useState(initGames);
   const [events, setEvents] = useState(initEvents);
-  const [tab, setTab] = useState<'games' | 'events' | 'posts' | 'users'>('games');
+  const [tab, setTab] = useState<'games' | 'boost' | 'events' | 'posts' | 'comments' | 'users'>('games');
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [editing, setEditing] = useState<AdminGame | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -35,7 +46,7 @@ export function AdminDashboard({ games: initGames, events: initEvents, posts: in
 
   const shown = games.filter((g) => filter === 'ALL' || g.reviewStatus === filter);
 
-  async function patchGame(id: string, data: Partial<AdminGame>) {
+  async function patchGame(id: string, data: Record<string, unknown>) {
     setBusy(id);
     try {
       const r = await fetch('/api/admin39/game', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, ...data }) });
@@ -76,7 +87,7 @@ export function AdminDashboard({ games: initGames, events: initEvents, posts: in
 
       {/* tabs */}
       <div className="mb-4 flex gap-1 border-b border-line">
-        {(['games', 'events', 'posts', 'users'] as const).map((t) => (
+        {(['games', 'boost', 'events', 'posts', 'comments', 'users'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold capitalize ${tab === t ? 'border-acc text-ink' : 'border-transparent text-dim hover:text-ink'}`}>
             {t}
@@ -116,6 +127,7 @@ export function AdminDashboard({ games: initGames, events: initEvents, posts: in
                   {g.reviewStatus !== 'APPROVED' && <button disabled={busy === g.id} onClick={() => patchGame(g.id, { reviewStatus: 'APPROVED' })} className="rounded-lg bg-up/15 px-2.5 py-1 text-xs font-semibold text-up disabled:opacity-40">Approve</button>}
                   {g.reviewStatus !== 'REJECTED' && <button disabled={busy === g.id} onClick={() => patchGame(g.id, { reviewStatus: 'REJECTED' })} className="rounded-lg bg-down/10 px-2.5 py-1 text-xs font-semibold text-down disabled:opacity-40">Reject</button>}
                   <button disabled={busy === g.id} onClick={() => patchGame(g.id, { featured: !g.featured })} className={`rounded-lg px-2.5 py-1 text-xs font-semibold disabled:opacity-40 ${g.featured ? 'bg-gold/20 text-gold' : 'bg-panel2 text-dim'}`}>{g.featured ? '★ Featured' : 'Feature'}</button>
+                  <button disabled={busy === g.id} onClick={() => patchGame(g.id, { verified: !g.verified })} className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold disabled:opacity-40 ${g.verified ? 'bg-acc/20 text-acc' : 'bg-panel2 text-dim'}`}>{g.verified ? (<>{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/verified.svg" alt="" className="h-3.5 w-3.5" /> Verified</>) : 'Verify'}</button>
                   <button onClick={() => setEditing(g)} className="rounded-lg bg-panel2 px-2.5 py-1 text-xs font-semibold text-ink">Edit</button>
                   <button disabled={busy === g.id} onClick={() => deleteGame(g.id, g.name)} className="rounded-lg px-2 py-1 text-xs text-faint hover:text-down disabled:opacity-40">🗑</button>
                 </div>
@@ -125,8 +137,44 @@ export function AdminDashboard({ games: initGames, events: initEvents, posts: in
         </>
       )}
 
+      {tab === 'boost' && (
+        <div>
+          <p className="mb-3 text-sm text-dim">Grant, extend or remove boost on any game — no payment needed. Boosts stack (each add extends the time).</p>
+          <div className="space-y-2">
+            {[...games].filter((g) => g.reviewStatus === 'APPROVED')
+              .sort((a, b) => (Number(isBoosted(b)) - Number(isBoosted(a))) || a.name.localeCompare(b.name))
+              .map((g) => {
+                const active = isBoosted(g);
+                return (
+                  <div key={g.id} className="card flex flex-wrap items-center gap-3 p-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-semibold text-ink">{g.name} <span className="text-xs text-faint">${g.ticker}</span></div>
+                      <div className="text-xs">
+                        {active
+                          ? <span className="font-semibold text-gold">★ Boosted · {boostLeft(g)} left</span>
+                          : <span className="text-faint">Not boosted</span>}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {[3, 7, 30].map((d) => (
+                        <button key={d} disabled={busy === g.id} onClick={() => patchGame(g.id, { boostDays: d })}
+                          className="rounded-lg bg-gold/15 px-2.5 py-1 text-xs font-semibold text-gold hover:bg-gold/25 disabled:opacity-40">+{d}d</button>
+                      ))}
+                      {active && (
+                        <button disabled={busy === g.id} onClick={() => patchGame(g.id, { unboost: true })}
+                          className="rounded-lg bg-down/10 px-2.5 py-1 text-xs font-semibold text-down hover:bg-down/20 disabled:opacity-40">Remove</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       {tab === 'events' && <EventsPanel events={events} setEvents={setEvents} />}
       {tab === 'posts' && <PostsPanel posts={initPosts} />}
+      {tab === 'comments' && <CommentsPanel comments={initComments} />}
       {tab === 'users' && <UsersPanel users={initUsers} />}
 
       {editing && <EditGame game={editing} onClose={() => setEditing(null)} onSave={patchGame} busy={busy === editing.id} />}
@@ -162,6 +210,10 @@ function EditGame({ game, onClose, onSave, busy }: { game: AdminGame; onClose: (
           </L>
           <L t="Token address" full><I v={f.tokenAddress ?? ''} onChange={set('tokenAddress')} placeholder="Solana mint → live chart" /></L>
           <L t="Description" full><I v={f.desc} onChange={set('desc')} /></L>
+          <L t="About / Overview" full><textarea value={f.about ?? ''} onChange={set('about')} rows={4} className={inp} placeholder="Long overview shown on the game's Overview tab" /></L>
+          <L t="Live players API URL" full><I v={f.onlineApiUrl ?? ''} onChange={set('onlineApiUrl')} placeholder="https://api.game.xyz/online (returns a number)" /></L>
+          <L t="Discord"><I v={f.discord ?? ''} onChange={set('discord')} placeholder="https://discord.gg/…" /></L>
+          <L t="Telegram"><I v={f.telegram ?? ''} onChange={set('telegram')} placeholder="https://t.me/…" /></L>
           <L t="Website"><I v={f.site ?? ''} onChange={set('site')} /></L>
           <L t="X URL"><I v={f.x ?? ''} onChange={set('x')} /></L>
           <L t="Players online"><I type="number" v={f.playersOnline} onChange={num('playersOnline')} /></L>
@@ -237,6 +289,16 @@ function EventsPanel({ events, setEvents }: { events: AdminEvent[]; setEvents: (
   );
 }
 
+// cüzdanı banla (bir daha post/comment atamaz)
+async function banWallet(wallet: string) {
+  if (!confirm(`Ban ${wallet.slice(0, 8)}…? They will no longer be able to post or comment.`)) return false;
+  const r = await fetch('/api/admin39/user', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet, banned: true }) });
+  if (!r.ok) { alert('Ban failed'); return false; }
+  alert('User banned.');
+  return true;
+}
+function copyWallet(w: string) { navigator.clipboard?.writeText(w); }
+
 // ── POSTS (moderasyon) ──
 function PostsPanel({ posts: init }: { posts: AdminPost[] }) {
   const [posts, setPosts] = useState(init);
@@ -254,16 +316,48 @@ function PostsPanel({ posts: init }: { posts: AdminPost[] }) {
     <div className="space-y-2">
       {posts.map((p) => (
         <div key={p.id} className="card p-3">
-          <div className="flex items-center gap-2 text-xs text-faint">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-faint">
             <span className="font-semibold text-ink">{p.authorName}</span>
+            <button onClick={() => copyWallet(p.authorWallet)} title="Copy wallet" className="mono text-faint hover:text-acc">{p.authorWallet.slice(0, 6)}…{p.authorWallet.slice(-4)} ⧉</button>
+            {p.gameName && <span className="rounded bg-accSoft px-1.5 py-0.5 text-[10px] font-semibold text-acc">▸ {p.gameName}</span>}
             {p.pinned && <span className="text-gold">📌</span>}
             <span>· ♥{p.likeCount} · 💬{p.commentCount}</span>
             <div className="ml-auto flex gap-1.5">
               <button onClick={() => pin(p.id, !p.pinned)} className="rounded bg-panel2 px-2 py-1 font-semibold text-dim hover:text-ink">{p.pinned ? 'Unpin' : 'Pin'}</button>
               <button onClick={() => del(p.id)} className="rounded px-2 py-1 text-down hover:bg-down/10">Delete</button>
+              <button onClick={() => banWallet(p.authorWallet)} className="rounded bg-down/10 px-2 py-1 font-semibold text-down hover:bg-down/20">Ban</button>
             </div>
           </div>
           <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{p.text}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── COMMENTS (oyun-social yorumları moderasyonu) ──
+function CommentsPanel({ comments: init }: { comments: AdminComment[] }) {
+  const [comments, setComments] = useState(init);
+  async function del(id: string) {
+    if (!confirm('Delete this comment?')) return;
+    const r = await fetch('/api/admin39/comment', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) });
+    if (r.ok) setComments((c) => c.filter((x) => x.id !== id));
+  }
+  if (!comments.length) return <p className="card p-6 text-center text-dim">No comments yet.</p>;
+  return (
+    <div className="space-y-2">
+      {comments.map((c) => (
+        <div key={c.id} className="card p-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-faint">
+            <span className="font-semibold text-ink">{c.authorName}</span>
+            <button onClick={() => copyWallet(c.authorWallet)} title="Copy wallet" className="mono text-faint hover:text-acc">{c.authorWallet.slice(0, 6)}…{c.authorWallet.slice(-4)} ⧉</button>
+            {c.gameName && <span className="rounded bg-accSoft px-1.5 py-0.5 text-[10px] font-semibold text-acc">▸ {c.gameName}</span>}
+            <div className="ml-auto flex gap-1.5">
+              <button onClick={() => del(c.id)} className="rounded px-2 py-1 text-down hover:bg-down/10">Delete</button>
+              <button onClick={() => banWallet(c.authorWallet)} className="rounded bg-down/10 px-2 py-1 font-semibold text-down hover:bg-down/20">Ban</button>
+            </div>
+          </div>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{c.text}</p>
         </div>
       ))}
     </div>

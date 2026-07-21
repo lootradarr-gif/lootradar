@@ -20,8 +20,11 @@ async function main() {
       ticker: g.ticker,
       genre: g.genre,
       desc: g.desc,
+      about: g.about ?? '',
+      screenshots: g.screenshots ?? [],
       icon: g.icon,
       iconUrl: g.iconUrl ?? null,
+      bannerUrl: g.bannerUrl ?? null,
       status: mapStatus(g.status),
       chain: g.chain,
       tokenAddress: g.tokenAddress ?? null,
@@ -47,6 +50,10 @@ async function main() {
     });
     console.log(`✓ ${g.name} (${g.id})`);
   }
+  // eski seed oyunlarını temizle (kullanıcı gönderimlerine DOKUNMA: sadece seed:true)
+  const keep = GAMES.map((g) => g.id);
+  const stale = await prisma.game.deleteMany({ where: { seed: true, slug: { notIn: keep } } });
+  if (stale.count) console.log(`🗑 eski seed oyun silindi: ${stale.count}`);
   const count = await prisma.game.count();
   console.log(`\nToplam oyun: ${count}`);
 }

@@ -15,11 +15,12 @@ const PROFANITY = [
   'amk', 'aq', 'orospu', 'piç', 'pic ', 'yavşak', 'göt', 'sik', 'sikeyim', 'siktir', 'oç', 'gavat', 'ibne', 'pezevenk', 'yarrak', 'amcık',
 ];
 
-export function moderate(input: string): { ok: boolean; reason?: string } {
+// opts: sahip başvurusunda (admin onaylı) About için adres/link serbest bırakılabilir.
+export function moderate(input: string, opts: { allowAddresses?: boolean; allowLinks?: boolean } = {}): { ok: boolean; reason?: string } {
   const text = (input || '').trim();
   if (!text) return { ok: false, reason: 'Say something first.' };
-  if (CA_RE.test(text)) return { ok: false, reason: 'Contract addresses / wallet addresses aren’t allowed.' };
-  if (URL_RE.test(text)) return { ok: false, reason: 'Links, handles and domains aren’t allowed in posts.' };
+  if (!opts.allowAddresses && CA_RE.test(text)) return { ok: false, reason: 'Contract addresses / wallet addresses aren’t allowed.' };
+  if (!opts.allowLinks && URL_RE.test(text)) return { ok: false, reason: 'Links, handles and domains aren’t allowed in posts.' };
   for (const r of SCAM_RE) if (r.test(text)) return { ok: false, reason: 'This looks like spam or a scam.' };
   const low = ` ${text.toLowerCase()} `;
   for (const w of PROFANITY) if (low.includes(w)) return { ok: false, reason: 'Please keep it clean — no profanity.' };

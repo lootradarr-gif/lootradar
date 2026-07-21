@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { USER_COOKIE, verifyUserSession } from '@/lib/user-auth';
 import { moderate } from '@/lib/moderation';
 import { grantXp } from '@/lib/xp';
+import { commentsToday, DAILY_COMMENT_LIMIT } from '@/lib/limits';
+import { passesAntibot, logIp } from '@/lib/antibot';
 
 const AUTHOR = { select: { wallet: true, displayName: true, avatarUrl: true, level: true } };
 
@@ -23,6 +25,12 @@ export async function POST(req: Request) {
   if (!wallet) return NextResponse.json({ error: 'Sign in first' }, { status: 401 });
   const me = await prisma.user.findUnique({ where: { wallet }, select: { banned: true } });
   if (me?.banned) return NextResponse.json({ error: 'Your account is restricted.' }, { status: 403 });
+
+  if ((await commentsToday(wallet)) >= DAILY_COMMENT_LIMIT) {
+    return NextResponse.json({ error: `Daily reply limit reached (${DAILY_COMMENT_LIMIT}/day). Come back tomorrow.` }, { status: 429 });
+  }
+  const ab = await passesAntibot(req, wallet, 'comment');
+  if (!ab.ok) return NextResponse.json({ error: ab.error }, { status: 429 });
 
   const body = await req.json().catch(() => ({}));
   const postId = String(body.postId || '');

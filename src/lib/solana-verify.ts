@@ -1,4 +1,4 @@
-// On-chain SOL ödeme doğrulama (BOMB Miner verifySolPayment deseninden uyarlandı).
+// On-chain SOL ödeme doğrulama (pre/post bakiye + meta.err + payer düşüşü, retry'li).
 // txSig gerçekten fromWallet'tan treasury'ye >= minLamports yollamış VE başarılı mı?
 // Treasury'nin bakiye artışına (pre/post) + meta.err'e bakar → sahte/başarısız tx reddedilir.
 import { Connection } from '@solana/web3.js';

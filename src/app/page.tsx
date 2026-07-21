@@ -1,14 +1,24 @@
 import Link from 'next/link';
 import { getGamesWithMarkets, totals, type GameWithMarket } from '@/lib/games';
 import { GameCard } from '@/components/GameCard';
-import { EVENTS, FEED } from '@/lib/feed';
+import { GameExplorer } from '@/components/GameExplorer';
+import { TrendingCard } from '@/components/TrendingCard';
+import { SponsoredSlot } from '@/components/SponsoredSlot';
+import { RadarHero } from '@/components/RadarHero';
+import { prisma } from '@/lib/prisma';
 import { usd, compact, pct, timeAgo, shortAddr } from '@/lib/format';
 import { GameIcon } from '@/components/GameIcon';
 
 export const revalidate = 60; // sayfa 60sn cache — DexScreener'a yakın-anlık
 
 export default async function Discover() {
-  const games = await getGamesWithMarkets();
+  const [games, recentPosts] = await Promise.all([
+    getGamesWithMarkets(),
+    prisma.post.findMany({
+      take: 6, orderBy: { createdAt: 'desc' },
+      include: { author: { select: { wallet: true, displayName: true } }, game: { select: { slug: true, name: true } } },
+    }),
+  ]);
   const t = totals(games);
   const tradable = games.filter((g) => g.status !== 'PRE-TOKEN');
   const boosted = games.find((g) => g.boosted) ?? games[0];
@@ -17,11 +27,24 @@ export default async function Discover() {
   const dom = [...tradable].sort((a, b) => b.market.mcap - a.market.mcap);
   const domTotal = dom.reduce((s, g) => s + g.market.mcap, 0) || 1;
 
+  // Trending now: boost'lu oyunlar otomatik girer, kalan slotlar en çok oynanandan dolar (4 kart)
+  const byOnline = [...games].sort((a, b) => b.playersOnline - a.playersOnline);
+  const trending: GameWithMarket[] = [];
+  for (const g of [...games.filter((g) => g.boosted), ...byOnline]) {
+    if (trending.length >= 4) break;
+    if (!trending.some((x) => x.id === g.id)) trending.push(g);
+  }
+  // Heating up: community oylarına göre sırala (eşitlikte 24h momentum)
+  const heating = [...games].sort((a, b) => (b.voteCount ?? 0) - (a.voteCount ?? 0) || b.market.change24h - a.market.change24h);
+  // Just added: en yeni listelenen 4 oyun
+  const justAdded = [...games].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, 4);
+
   return (
     <div className="space-y-14 pt-8">
       {/* ── HERO ── */}
-      <section className="hero-glow -mx-4 rounded-3xl px-4 py-10 sm:-mx-6 sm:px-6">
-        <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-center">
+      <section className="hero-glow relative -mx-4 overflow-hidden rounded-3xl px-4 py-10 sm:-mx-6 sm:px-6">
+        <RadarHero />
+        <div className="relative z-10 grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-center">
           <div>
             <span className="chip mb-4 border-acc/25 text-acc">◆ Live on Solana</span>
             <h1 className="text-4xl font-black leading-[1.05] tracking-tight sm:text-6xl">
@@ -59,18 +82,34 @@ export default async function Discover() {
               <Readout k="vol_24h" v={usd(t.vol)} />
               <Readout k="games" v={String(t.count)} />
               <Readout k="reach" v={compact(t.reach)} />
-              <Readout k="live_events" v={String(EVENTS.length)} />
             </dl>
           </aside>
         </div>
       </section>
 
-      {/* ── TRENDING GAMES ── */}
-      <section id="games">
-        <SectionHead title="Heating up" hint="ranked by momentum + buzz" href="/rankings" hrefLabel="All games →" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {games.map((g) => <GameCard key={g.id} g={g} />)}
+      {/* ── TRENDING NOW ── */}
+      <section>
+        <SectionHead title="Trending now" hint="by live players & boosts" href="/rankings" hrefLabel="All games →" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {trending.map((g, i) => <TrendingCard key={g.id} g={g} i={i} />)}
         </div>
+      </section>
+
+      {/* ── SPONSORED slot ── */}
+      <SponsoredSlot game={games.find((g) => g.boosted) ?? null} />
+
+      {/* ── JUST ADDED ── */}
+      <section>
+        <SectionHead title="Just added" hint="newest games on the radar" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {justAdded.map((g, i) => <GameCard key={g.id} g={g} i={i} />)}
+        </div>
+      </section>
+
+      {/* ── ALL GAMES (arama + filtre) ── */}
+      <section id="games">
+        <SectionHead title="Browse all games" hint="search, filter by genre & sort" href="/rankings" hrefLabel="Rankings →" />
+        <GameExplorer games={heating} />
       </section>
 
       {/* ── DOMINANCE ── */}
@@ -105,40 +144,30 @@ export default async function Discover() {
         <MoversList title="Cooling off" sub="24h" tone="down" rows={losers} />
       </section>
 
-      {/* ── COMMUNITY + EVENTS ── */}
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div className="card p-5">
-          <SectionHead title="Community pulse" hint="" href="/feed" hrefLabel="Open pulse →" small />
-          <div className="mt-2 divide-y divide-line">
-            {FEED.map((p) => (
-              <div key={p.id} className="flex gap-3 py-3">
-                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-panel2 text-xs font-bold text-dim">{p.author.slice(0, 2)}</div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs text-faint">{shortAddr(p.author)}{p.game ? <> · <span className="text-acc">{p.game}</span></> : null} · {timeAgo(p.at)}</div>
-                  <p className="mt-0.5 text-sm text-ink">{p.text}</p>
-                  <div className="mt-1 flex items-center gap-4 text-xs text-faint">
-                    <span>▲ {p.votes}</span><span>💬 {p.comments}</span>
-                    {p.url && <a href={p.url} target="_blank" className="text-dim hover:text-acc">link ↗</a>}
+      {/* ── COMMUNITY PULSE (gerçek postlar) ── */}
+      <section className="card p-5">
+        <SectionHead title="Community pulse" hint="latest from the community" href="/community" hrefLabel="Open community →" small />
+        {recentPosts.length === 0 ? (
+          <p className="py-6 text-center text-sm text-dim">No posts yet — <Link href="/community" className="text-acc">be the first</Link>.</p>
+        ) : (
+          <div className="mt-2 grid gap-x-8 gap-y-1 sm:grid-cols-2">
+            {recentPosts.map((p) => {
+              const name = p.author.displayName || shortAddr(p.author.wallet);
+              return (
+                <Link key={p.id} href="/community" className="flex gap-3 rounded-lg py-3 transition-colors hover:bg-panel2/40">
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-panel2 text-xs font-bold text-dim">{name.slice(0, 2).toUpperCase()}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs text-faint">
+                      <span className="text-dim">{name}</span>{p.game ? <> · <span className="text-acc">{p.game.name}</span></> : null} · {timeAgo(p.createdAt.getTime())}
+                    </div>
+                    <p className="mt-0.5 line-clamp-2 text-sm text-ink">{p.text}</p>
+                    <div className="mt-1 flex items-center gap-4 text-xs text-faint"><span>♥ {p.likeCount}</span><span>💬 {p.commentCount}</span></div>
                   </div>
-                </div>
-              </div>
-            ))}
+                </Link>
+              );
+            })}
           </div>
-        </div>
-        <div className="card p-5">
-          <SectionHead title="On the wire" hint="latest" small />
-          <div className="mt-2 divide-y divide-line">
-            {EVENTS.map((e) => (
-              <div key={e.id} className="flex items-start gap-3 py-3">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-acc" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-ink">{e.title}</p>
-                  <div className="text-xs text-faint">{e.game} · {timeAgo(e.at)} ago</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
       </section>
 
       {/* ── SUBMIT CTA ── */}

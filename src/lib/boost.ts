@@ -1,4 +1,4 @@
-// Boost = sabit ücret: X SOL öde → N gün öne çık. Ödeme BOMB Miner treasury'sine.
+// Boost = sabit ücret: X SOL öde → N gün öne çık. Ödeme LootRadar treasury'sine.
 export const BOOST_TREASURY = '6zDgRPjYU27eJFCR9RUCd9eeJjmY5v6rVgrhnmaDx6Rs';
 export const LAMPORTS_PER_SOL = 1_000_000_000;
 

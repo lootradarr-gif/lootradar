@@ -56,12 +56,21 @@ html { transition: background-color .25s ease; }
     @apply rounded-xl border border-line bg-panel;
   }
   .card-hover {
-    @apply transition-colors hover:border-line2 hover:bg-panel2;
+    @apply transition-all duration-200 hover:border-line2 hover:bg-panel2 hover:-translate-y-1 hover:shadow-card;
   }
   .chip {
     @apply inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-xs font-medium text-dim;
   }
   .mono { font-variant-numeric: tabular-nums; @apply font-mono; }
+
+  /* kart giriş animasyonu (Faz 5) — opacity+translate, GPU-dostu */
+  .reveal-up { opacity: 0; animation: reveal-up-kf .5s cubic-bezier(.2,.7,.2,1) both; }
+  /* boost'lu kartlarda ince altın parıltı */
+  .boost-glow { animation: boost-glow-kf 2.6s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal-up { opacity: 1; animation: none; }
+    .boost-glow { animation: none; }
+  }
 
   /* buton dili — pill + gradient (solgames'in köşeli düz butonlarından ayrışır) */
   .btn {
@@ -129,5 +138,7 @@ html { transition: background-color .25s ease; }
 .theme-switch #star-2 { width: 5px; top: 14px; left: 3px; }
 .theme-switch #star-3 { width: 10px; top: 17px; left: 9px; animation-delay: .6s; }
 .theme-switch #star-4 { width: 15px; top: 0; left: 16px; animation-delay: 1.3s; }
+@keyframes reveal-up-kf { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes boost-glow-kf { 0%, 100% { box-shadow: 0 0 0 1px rgb(var(--c-gold) / 0.35), 0 0 14px -4px rgb(var(--c-gold) / 0.35); } 50% { box-shadow: 0 0 0 1px rgb(var(--c-gold) / 0.6), 0 0 22px -2px rgb(var(--c-gold) / 0.5); } }
 @keyframes star-twinkle { 0% { transform: scale(1); } 40% { transform: scale(1.2); } 80% { transform: scale(.8); } 100% { transform: scale(1); } }
 @keyframes rotate-center { 0% { transform: translateX(24px) rotate(0deg); } 100% { transform: translateX(24px) rotate(360deg); } }

@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { USER_COOKIE, verifyUserSession } from '@/lib/user-auth';
 import { grantXp } from '@/lib/xp';
+import { passesAntibot, logIp } from '@/lib/antibot';
 
 const utcDay = () => new Date().toISOString().slice(0, 10);
 
@@ -27,12 +28,17 @@ export async function POST(req: Request) {
   const already = await prisma.vote.findUnique({ where: { voterWallet_day: { voterWallet: wallet, day } } });
   if (already) return NextResponse.json({ error: "You already voted today — come back tomorrow." }, { status: 409 });
 
+  // anti-bot: hesap yaşı >=24h + IP/gün limiti
+  const ab = await passesAntibot(req, wallet, 'vote');
+  if (!ab.ok) return NextResponse.json({ error: ab.error }, { status: 429 });
+
   try {
     const [, g] = await prisma.$transaction([
       prisma.vote.create({ data: { gameId: game.id, voterWallet: wallet, day } }),
       prisma.game.update({ where: { id: game.id }, data: { voteCount: { increment: 1 } }, select: { voteCount: true } }),
     ]);
     await grantXp(wallet, 'vote');
+    await logIp(ab.ipHash, 'vote');
     return NextResponse.json({ ok: true, voteCount: g.voteCount });
   } catch {
     return NextResponse.json({ error: 'You already voted today.' }, { status: 409 });

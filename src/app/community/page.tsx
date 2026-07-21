@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { USER_COOKIE, verifyUserSession } from '@/lib/user-auth';
 import { CommunityFeed } from '@/components/CommunityFeed';
+import { TopRadar } from '@/components/TopRadar';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,12 +27,19 @@ export default async function Community() {
   }));
 
   return (
-    <div className="mx-auto max-w-2xl pt-8">
+    <div className="mx-auto max-w-5xl pt-8">
       <div className="mb-5">
         <h1 className="text-2xl font-bold sm:text-3xl">Community</h1>
         <p className="mt-1 text-sm text-dim">Post, discuss games, and earn XP. Top contributors may be rewarded when $LOOT lands.</p>
       </div>
-      <CommunityFeed initial={posts} nextCursor={rows.length === 20 ? rows[rows.length - 1].id : null} games={games} />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0">
+          <CommunityFeed initial={posts} nextCursor={rows.length === 20 ? rows[rows.length - 1].id : null} games={games} />
+        </div>
+        <aside className="lg:sticky lg:top-20 lg:self-start">
+          <TopRadar limit={15} />
+        </aside>
+      </div>
     </div>
   );
 }

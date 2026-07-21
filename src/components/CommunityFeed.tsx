@@ -14,7 +14,7 @@ type Post = {
 type Comment = { id: string; text: string; createdAt: string; author: Author };
 export type GameOpt = { id: string; name: string };
 
-export function CommunityFeed({ initial, nextCursor, games = [], hideComposer }: { initial: Post[]; nextCursor: string | null; games?: GameOpt[]; hideComposer?: boolean }) {
+export function CommunityFeed({ initial, nextCursor, games = [], hideComposer, fixedGameId }: { initial: Post[]; nextCursor: string | null; games?: GameOpt[]; hideComposer?: boolean; fixedGameId?: string }) {
   const { user, signIn } = useUser();
   const [posts, setPosts] = useState<Post[]>(initial);
   const [cursor, setCursor] = useState<string | null>(nextCursor);
@@ -24,7 +24,8 @@ export function CommunityFeed({ initial, nextCursor, games = [], hideComposer }:
     if (!cursor) return;
     setLoadingMore(true);
     try {
-      const r = await fetch(`/api/post?cursor=${cursor}`);
+      const q = fixedGameId ? `&gameId=${fixedGameId}` : '';
+      const r = await fetch(`/api/post?cursor=${cursor}${q}`);
       const d = await r.json();
       setPosts((p) => [...p, ...d.posts]);
       setCursor(d.nextCursor);
@@ -34,7 +35,7 @@ export function CommunityFeed({ initial, nextCursor, games = [], hideComposer }:
   return (
     <div className="space-y-4">
       {!hideComposer && (user ? (
-        <Composer games={games} onPosted={(p) => setPosts((prev) => [p, ...prev])} />
+        <Composer games={games} fixedGameId={fixedGameId} onPosted={(p) => setPosts((prev) => [p, ...prev])} />
       ) : (
         <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
           <p className="text-sm text-dim">Sign in with your wallet to post and earn XP.</p>
@@ -54,13 +55,14 @@ export function CommunityFeed({ initial, nextCursor, games = [], hideComposer }:
   );
 }
 
-function Composer({ games, onPosted }: { games: GameOpt[]; onPosted: (p: Post) => void }) {
+function Composer({ games, onPosted, fixedGameId }: { games: GameOpt[]; onPosted: (p: Post) => void; fixedGameId?: string }) {
   const { user } = useUser();
   const [text, setText] = useState('');
   const [image, setImage] = useState('');
   const [gameId, setGameId] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const effectiveGameId = fixedGameId || gameId;
 
   function onImg(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
@@ -71,7 +73,7 @@ function Composer({ games, onPosted }: { games: GameOpt[]; onPosted: (p: Post) =
     if (!text.trim()) return;
     setBusy(true); setErr('');
     try {
-      const r = await fetch('/api/post', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, imageUrl: image, gameId: gameId || undefined }) });
+      const r = await fetch('/api/post', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, imageUrl: image, gameId: effectiveGameId || undefined }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Failed');
       onPosted(d.post); setText(''); setImage(''); setGameId('');
@@ -84,15 +86,17 @@ function Composer({ games, onPosted }: { games: GameOpt[]; onPosted: (p: Post) =
         <Avatar name={user?.displayName || user?.wallet || '?'} url={user?.avatarUrl} />
         <div className="min-w-0 flex-1">
           <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={500} rows={2}
-            placeholder="What's happening in Solana gaming? (no links or contract addresses)"
+            placeholder={fixedGameId ? 'Say something about this game… (no links or contract addresses)' : "What's happening in Solana gaming? (no links or contract addresses)"}
             className="w-full resize-none rounded-xl border border-line bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-acc placeholder:text-faint" />
           {image && <div className="mt-2 overflow-hidden rounded-lg border border-line"><img src={image} alt="" className="max-h-48 w-full object-cover" /></div>}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <label className="cursor-pointer rounded-lg bg-panel2 px-2.5 py-1.5 text-xs font-semibold text-dim hover:text-ink">🖼 Image<input type="file" accept="image/*" onChange={onImg} className="hidden" /></label>
-            <select value={gameId} onChange={(e) => setGameId(e.target.value)} className="rounded-lg border border-line bg-panel px-2 py-1.5 text-xs text-dim outline-none focus:border-acc">
-              <option value="">Tag a game (optional)</option>
-              {games.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
+            {!fixedGameId && (
+              <select value={gameId} onChange={(e) => setGameId(e.target.value)} className="rounded-lg border border-line bg-panel px-2 py-1.5 text-xs text-dim outline-none focus:border-acc">
+                <option value="">Tag a game (optional)</option>
+                {games.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
+            )}
             <span className="ml-auto text-[11px] text-faint">{text.length}/500</span>
             <button disabled={busy || !text.trim()} onClick={submit} className="btn-primary btn-sm disabled:opacity-50">{busy ? 'Posting…' : 'Post'}</button>
           </div>

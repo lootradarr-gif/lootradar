@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="vfBadge" gradientUnits="userSpaceOnUse" x1="26" y1="14" x2="74" y2="88">
+      <stop offset="0" stop-color="#8b93ff"/>
+      <stop offset="0.5" stop-color="#5b62ee"/>
+      <stop offset="1" stop-color="#454bd6"/>
+    </linearGradient>
+    <radialGradient id="vfInner" gradientUnits="userSpaceOnUse" cx="42" cy="38" r="40">
+      <stop offset="0" stop-color="#6169f2"/>
+      <stop offset="0.7" stop-color="#525ae8"/>
+      <stop offset="1" stop-color="#3f45c9"/>
+    </radialGradient>
+    <linearGradient id="vfCheck" gradientUnits="userSpaceOnUse" x1="35" y1="35" x2="60" y2="66">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dfe3ff"/>
+    </linearGradient>
+    <filter id="vfShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2.2" flood-color="#2c1d6b" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <g filter="url(#vfShadow)">
+    <!-- scalloped seal ring (16 bumps) -->
+    <g fill="url(#vfBadge)">
+      <circle cx="90" cy="50" r="9"/><circle cx="86.96" cy="65.31" r="9"/><circle cx="78.28" cy="78.28" r="9"/><circle cx="65.31" cy="86.96" r="9"/>
+      <circle cx="50" cy="90" r="9"/><circle cx="34.69" cy="86.96" r="9"/><circle cx="21.72" cy="78.28" r="9"/><circle cx="13.04" cy="65.31" r="9"/>
+      <circle cx="10" cy="50" r="9"/><circle cx="13.04" cy="34.69" r="9"/><circle cx="21.72" cy="21.72" r="9"/><circle cx="34.69" cy="13.04" r="9"/>
+      <circle cx="50" cy="10" r="9"/><circle cx="65.31" cy="13.04" r="9"/><circle cx="78.28" cy="21.72" r="9"/><circle cx="86.96" cy="34.69" r="9"/>
+    </g>
+    <!-- main disc -->
+    <circle cx="50" cy="50" r="40" fill="url(#vfBadge)"/>
+    <!-- recessed inner disc -->
+    <circle cx="50" cy="50" r="31" fill="url(#vfInner)"/>
+    <circle cx="50" cy="50" r="31" fill="none" stroke="#3b41c0" stroke-opacity="0.5" stroke-width="1.5"/>
+  </g>
+  <!-- 3D check: dark base + white face + highlight -->
+  <path d="M34 51 L45.5 63 L69 35" fill="none" stroke="#3a40bf" stroke-opacity="0.45" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" transform="translate(0,2)"/>
+  <path d="M34 51 L45.5 63 L69 35" fill="none" stroke="url(#vfCheck)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M37 50.5 L45.5 59.5 L66.5 37" fill="none" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

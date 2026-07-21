@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { USER_COOKIE, verifyUserSession } from '@/lib/user-auth';
 import { moderate } from '@/lib/moderation';
 import { grantXp } from '@/lib/xp';
+import { postsToday, DAILY_POST_LIMIT } from '@/lib/limits';
+import { passesAntibot, logIp } from '@/lib/antibot';
 
 const AUTHOR = { select: { wallet: true, displayName: true, avatarUrl: true, level: true } };
 
@@ -19,10 +21,12 @@ function cleanImg(v: string): string | null | false {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const cursor = url.searchParams.get('cursor');
+  const gameId = url.searchParams.get('gameId');
   const wallet = verifyUserSession(cookies().get(USER_COOKIE)?.value);
   const posts = await prisma.post.findMany({
     take: 20,
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+    ...(gameId ? { where: { gameId } } : {}),
     orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
     include: { author: AUTHOR, game: { select: { slug: true, name: true } }, ...(wallet ? { likes: { where: { wallet }, select: { wallet: true } } } : {}) },
   });
@@ -41,6 +45,12 @@ export async function POST(req: Request) {
   if (!wallet) return NextResponse.json({ error: 'Sign in first' }, { status: 401 });
   const me = await prisma.user.findUnique({ where: { wallet }, select: { banned: true } });
   if (me?.banned) return NextResponse.json({ error: 'Your account is restricted.' }, { status: 403 });
+
+  if ((await postsToday(wallet)) >= DAILY_POST_LIMIT) {
+    return NextResponse.json({ error: `Daily post limit reached (${DAILY_POST_LIMIT}/day). Come back tomorrow.` }, { status: 429 });
+  }
+  const ab = await passesAntibot(req, wallet, 'post');
+  if (!ab.ok) return NextResponse.json({ error: ab.error }, { status: 429 });
 
   const body = await req.json().catch(() => ({}));
   const text = String(body.text || '').trim().slice(0, 500);
@@ -62,6 +72,7 @@ export async function POST(req: Request) {
   });
   await grantXp(wallet, 'post');
   await grantXp(wallet, 'daily');
+  await logIp(ab.ipHash, 'post');
 
   return NextResponse.json({
     ok: true,

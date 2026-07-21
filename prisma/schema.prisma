@@ -64,6 +64,16 @@ model Game {
   sortWeight   Int          @default(0)     // admin sıralama
   seed         Boolean      @default(false) // ilk tohum kayıtları
   voteCount    Int          @default(0) // community oyları
+  about        String       @default("")  // uzun Overview metni
+  screenshots  String[]     @default([])  // oyun-içi görsel galerisi (http/dataURL, maks 6)
+  onlineApiUrl String?                    // canlı oyuncu sayısı endpoint'i
+  onlineFetchedAt DateTime?               // son online çekim zamanı (cache)
+  holdersFetchedAt DateTime?              // son holder sayımı zamanı (Helius)
+  verified     Boolean      @default(false) // admin onaylı "gerçek proje" rozeti
+  discord      String?
+  telegram     String?
+  platforms    String[]     @default([])  // Web / iOS / Android / Windows ...
+  favorites    Favorite[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   boosts       Boost[]
@@ -107,8 +117,33 @@ model User {
   updatedAt   DateTime @updatedAt
   posts       Post[]
   comments    Comment[]
+  favorites   Favorite[]
 
   @@index([xp])
+}
+
+// Watchlist / favori oyunlar
+model Favorite {
+  wallet    String
+  gameId    String
+  user      User     @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([wallet, gameId])
+  @@index([wallet])
+  @@index([gameId])
+}
+
+// IP bazlı günlük eylem sayacı (anti-bot / Sybil). ipHash = tuzlu SHA-256.
+model IpLog {
+  id        String   @id @default(cuid())
+  ipHash    String
+  kind      String   // vote | post | comment
+  day       String   // YYYY-MM-DD (UTC)
+  createdAt DateTime @default(now())
+
+  @@index([ipHash, day, kind])
 }
 
 // Community postu (X-tarzı). Yazar = User (cüzdan).
