@@ -16,15 +16,20 @@ export interface TokenMarket {
 
 const BASE = 'https://api.dexscreener.com/latest/dex/tokens/';
 
+// DexScreener /tokens çoklu-yanıtı TOPLAM ~30 pair ile sınırlı (adres sayısıyla değil).
+// Token başına birkaç pair olabildiği için, çok adresi tek istekte sorunca düşük-likiditeli
+// token'ların pair'leri 30-cap dışında kalıp yanıttan düşüyor → o oyun $0 görünüyor.
+// Küçük gruplar (adres başına ~3 pair varsayımıyla güvenli) bu kaybı önler.
+const BATCH_SIZE = 8;
+
 // Next.js fetch cache: 60sn revalidate → API'yi dövmeden "anlık"a yakın.
 export async function fetchMarkets(addresses: string[]): Promise<Record<string, TokenMarket>> {
   const out: Record<string, TokenMarket> = {};
   const list = addresses.filter(Boolean);
   if (!list.length) return out;
 
-  // 30'arlı gruplar
-  for (let i = 0; i < list.length; i += 30) {
-    const batch = list.slice(i, i + 30);
+  for (let i = 0; i < list.length; i += BATCH_SIZE) {
+    const batch = list.slice(i, i + BATCH_SIZE);
     try {
       const r = await fetch(BASE + batch.join(','), { next: { revalidate: 60 } });
       if (!r.ok) continue;
