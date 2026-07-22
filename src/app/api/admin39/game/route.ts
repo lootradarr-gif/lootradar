@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { ADMIN_COOKIE, verifySession } from '@/lib/admin-auth';
+import { persistImage, isDataUri } from '@/lib/blob';
 
 function authed() {
   return verifySession(cookies().get(ADMIN_COOKIE)?.value);
@@ -26,8 +27,13 @@ export async function PATCH(req: Request) {
   int('sortWeight'); str('name', 80); str('ticker', 20); str('genre', 40); str('desc', 300);
   str('tokenAddress', 64); str('x', 200); str('site', 200); str('icon', 8); str('about', 1200); str('discord', 200); str('telegram', 200);
   if (typeof body.onlineApiUrl === 'string') data.onlineApiUrl = body.onlineApiUrl.trim().slice(0, 300) || null;
-  if (typeof body.iconUrl === 'string') data.iconUrl = body.iconUrl.slice(0, 300000) || null;
-  if (typeof body.bannerUrl === 'string') data.bannerUrl = body.bannerUrl.slice(0, 500000) || null;
+  // İkon/banner: data-URI gelirse Blob'a taşı (HTML'e gömme); http URL veya boş olduğu gibi geçer.
+  try {
+    if (typeof body.iconUrl === 'string') data.iconUrl = isDataUri(body.iconUrl) ? await persistImage(body.iconUrl, 'games/icons') : (body.iconUrl.slice(0, 1000) || null);
+    if (typeof body.bannerUrl === 'string') data.bannerUrl = isDataUri(body.bannerUrl) ? await persistImage(body.bannerUrl, 'games/banners') : (body.bannerUrl.slice(0, 1000) || null);
+  } catch (e) {
+    return NextResponse.json({ error: 'Image upload failed: ' + (e as Error).message }, { status: 502 });
+  }
   int('playersOnline'); int('holders'); int('rating');
   num('mockPrice'); num('mockMcap'); num('mockVol24h'); num('mockChange24h');
 

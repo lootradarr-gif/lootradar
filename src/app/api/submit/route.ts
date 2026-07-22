@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { moderate } from '@/lib/moderation';
+import { persistImage } from '@/lib/blob';
 
 const clean = (v: unknown, max = 400) => String(v ?? '').trim().slice(0, max);
 
@@ -82,6 +83,17 @@ export async function POST(req: Request) {
   const ALLOWED_PLATFORMS = ['Web', 'iOS', 'Android', 'Windows', 'Mac'];
   const platforms = (Array.isArray(body.platforms) ? body.platforms : []).map((p: unknown) => String(p)).filter((p: string) => ALLOWED_PLATFORMS.includes(p)).slice(0, 5);
 
+  // Görselleri Vercel Blob'a taşı (data-URI'leri DB'ye/HTML'e gömmeyi bırak — sayfa şişmesin)
+  let iconUrl: string | null, bannerUrl: string | null, shotUrls: string[];
+  try {
+    iconUrl = await persistImage(icon, 'games/icons');
+    bannerUrl = await persistImage(banner, 'games/banners');
+    shotUrls = (await Promise.all(screenshots.map((s) => persistImage(s, 'games/shots')))).filter((u): u is string => !!u);
+  } catch (e) {
+    console.error('[submit] blob upload failed:', (e as Error).message);
+    return NextResponse.json({ error: 'Image upload failed, please try again.' }, { status: 502 });
+  }
+
   // benzersiz slug
   let slug = slugify(name);
   if (await prisma.game.findUnique({ where: { slug } })) {
@@ -96,13 +108,13 @@ export async function POST(req: Request) {
       genre,
       desc,
       about,
-      screenshots,
+      screenshots: shotUrls,
       onlineApiUrl,
       discord,
       telegram,
       platforms,
-      iconUrl: icon || null,
-      bannerUrl: banner || null,
+      iconUrl,
+      bannerUrl,
       tokenAddress,
       status: tokenAddress ? 'MAINNET' : 'PRE_TOKEN',
       x: clean(body.x, 200) || null,
