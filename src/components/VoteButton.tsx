@@ -9,10 +9,13 @@ export function VoteButton({ slug, initialCount }: { slug: string; initialCount:
   const [voted, setVoted] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // Canlı sayı + bugün oy verdim mi — ISR-cache'li sayfada bile gerçek voteCount gösterilir.
   useEffect(() => {
-    if (!user) { setVoted(false); return; }
-    fetch('/api/vote').then((r) => r.json()).then((d) => setVoted(!!d.votedToday)).catch(() => {});
-  }, [user]);
+    fetch(`/api/vote?gameId=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
+      if (typeof d.count === 'number') setCount(d.count);
+      setVoted(!!d.votedToday);
+    }).catch(() => {});
+  }, [user, slug]);
 
   async function vote() {
     if (!user) { signIn(); return; }

@@ -40,8 +40,7 @@ async function main() {
 
   for (const c of CANDIDATES) {
     const slug = slugify(c.name);
-    // Zaten var mı? (slug)
-    if (await prisma.game.findUnique({ where: { slug } })) { console.log(`~ ${c.name}: zaten var (${slug})`); dup++; continue; }
+    const existing = await prisma.game.findUnique({ where: { slug }, select: { id: true } });
 
     let pairs = await search(c.name);
     // ticker eşleşen Solana pair'ler; yoksa isimle gelen tüm Solana pair'ler
@@ -61,23 +60,29 @@ async function main() {
     const p = best.p, bt = p.baseToken || {}, info = p.info || {};
     const ca = bt.address;
     const iconUrl = info.imageUrl || null;
+    const bannerUrl = info.header || null; // oyunun KENDİ banner'ı (DexScreener CDN) — solgames DEĞİL
     const site = (info.websites || [])[0]?.url || null;
     const x = (info.socials || []).find((s: any) => s.type === 'twitter')?.url || null;
     const desc = `${c.name} — a ${c.genre} game on Solana.`; // kendi kısa metnimiz (solgames açıklaması KOPYALANMAZ)
 
-    console.log(`✓ ${c.name.padEnd(20)} $${c.ticker.padEnd(7)} mc $${mcK.toFixed(0)}K icon:${iconUrl ? 'y' : 'N'} x:${x ? 'y' : '-'} site:${site ? 'y' : '-'} ca:${ca.slice(0, 8)}…`);
+    console.log(`${existing ? '↻' : '✓'} ${c.name.padEnd(20)} $${c.ticker.padEnd(7)} mc $${mcK.toFixed(0)}K icon:${iconUrl ? 'y' : 'N'} banner:${bannerUrl ? 'y' : 'N'} x:${x ? 'y' : '-'} ca:${ca.slice(0, 8)}…`);
     ok++;
 
     if (WRITE) {
-      await prisma.game.create({
-        data: {
-          slug, name: c.name, ticker: c.ticker, genre: c.genre, desc,
-          status: 'MAINNET', chain: 'solana', tokenAddress: ca,
-          iconUrl, x, site,
-          reviewStatus: 'APPROVED', // mcap ile doğrulandı → canlı board'da görünür
-          verified: true, seed: true,
-        },
-      });
+      if (existing) {
+        // Mevcut oyunu zenginleştir (banner/icon/x/site) — desc'e/onaya dokunma
+        await prisma.game.update({ where: { id: existing.id }, data: { bannerUrl, iconUrl, x: x || undefined, site: site || undefined, tokenAddress: ca } });
+      } else {
+        await prisma.game.create({
+          data: {
+            slug, name: c.name, ticker: c.ticker, genre: c.genre, desc,
+            status: 'MAINNET', chain: 'solana', tokenAddress: ca,
+            iconUrl, bannerUrl, x, site,
+            reviewStatus: 'PENDING', // TÜM import'lar admin onayına → kullanıcı /admin39'dan onaylar
+            verified: false, seed: true,
+          },
+        });
+      }
     }
   }
   console.log(`\nBitti: ${ok} çözüldü/eklendi · ${dup} zaten var · ${skip} atlandı (bulunamadı/yanlış token)`);

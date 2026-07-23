@@ -47,9 +47,11 @@ export function RankingsTable({ games }: { games: GameWithMarket[] }) {
       votes: (a, b) => (b.voteCount ?? 0) - (a.voteCount ?? 0),
       new: (a, b) => b.createdAt - a.createdAt,
     };
-    return [...list].sort(cmp[sort]);
+    // BOOSTED projeler en üstte sabit (solgames tarzı), sonra seçili sıralama
+    return [...list].sort((a, b) => (Number(!!b.boosted) - Number(!!a.boosted)) || cmp[sort](a, b));
   }, [games, q, genre, status, sort]);
 
+  const boostedCount = ranked.filter((g) => g.boosted).length; // sıra numarası boosted'ları atlar
   const inp = 'rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-acc';
 
   return (
@@ -94,14 +96,14 @@ export function RankingsTable({ games }: { games: GameWithMarket[] }) {
                   const pre = isPre(g);
                   const up = g.market.change24h >= 0;
                   return (
-                    <tr key={g.id} className="group border-b border-line/50 last:border-0 hover:bg-panel2/60">
-                      <td className="py-3 pl-4 pr-2 font-mono text-faint">{i + 1}</td>
+                    <tr key={g.id} className={`group border-b last:border-0 ${g.boosted ? 'border-gold/25 bg-gold/[0.07] hover:bg-gold/10' : 'border-line/50 hover:bg-panel2/60'}`}>
+                      <td className="py-3 pl-4 pr-2 font-mono text-faint">{g.boosted ? <span className="text-gold">★</span> : i - boostedCount + 1}</td>
                       <td className="px-2 py-3">
                         <Link href={`/game/${g.id}`} className="flex items-center gap-3">
                           <GameIcon g={g} className="h-9 w-9 rounded-lg text-base" />
                           <span className="min-w-0">
                             <span className="flex items-center gap-1.5 font-medium text-ink group-hover:text-acc">
-                              {g.name}{g.boosted && <span className="text-[10px] text-gold">★</span>}
+                              {g.name}{g.boosted && <span className="rounded bg-gold/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-gold">Boosted</span>}
                             </span>
                             <span className="block text-xs text-faint">${g.ticker} · {g.genre}</span>
                           </span>

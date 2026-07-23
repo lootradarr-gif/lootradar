@@ -11,9 +11,13 @@ tsconfig.tsbuildinfo
 # env
 .env
 .env*.local
+.env.prod
+.env.production
 
 # local submission store (dev only — moves to DB later)
 /data
 
 .vercel
+.env*.local
+
 .env*.local

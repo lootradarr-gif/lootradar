@@ -7,12 +7,19 @@ import { passesAntibot, logIp } from '@/lib/antibot';
 
 const utcDay = () => new Date().toISOString().slice(0, 10);
 
-// GET /api/vote — bugün oy verdim mi + hangi oyuna?
-export async function GET() {
+// GET /api/vote[?gameId=] — bugün oy verdim mi + (gameId verilirse) o oyunun CANLI voteCount'u.
+// Canlı sayı → game sayfası ISR-cache'li olsa da buton doğru sayıyı gösterir (bayat 0 görünmez).
+export async function GET(req: Request) {
   const wallet = verifyUserSession(cookies().get(USER_COOKIE)?.value);
-  if (!wallet) return NextResponse.json({ votedToday: false, gameId: null });
+  const gameId = new URL(req.url).searchParams.get('gameId');
+  let count: number | undefined;
+  if (gameId) {
+    const g = await prisma.game.findFirst({ where: { OR: [{ id: gameId }, { slug: gameId }] }, select: { voteCount: true } });
+    count = g?.voteCount;
+  }
+  if (!wallet) return NextResponse.json({ votedToday: false, gameId: null, count });
   const v = await prisma.vote.findUnique({ where: { voterWallet_day: { voterWallet: wallet, day: utcDay() } }, select: { gameId: true } });
-  return NextResponse.json({ votedToday: !!v, gameId: v?.gameId ?? null });
+  return NextResponse.json({ votedToday: !!v, gameId: v?.gameId ?? null, count });
 }
 
 // POST /api/vote { gameId } — günde 1 oy. Oy = puan (voteCount) + XP.
