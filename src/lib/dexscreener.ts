@@ -22,9 +22,21 @@ const BASE = 'https://api.dexscreener.com/latest/dex/tokens/';
 // Küçük gruplar (adres başına ~3 pair varsayımıyla güvenli) bu kaybı önler.
 const BATCH_SIZE = 8;
 
+// Fiyat/mcap SADECE standart quote'lu (SOL/USDC/USDT) pair'lerden güvenilir. Egzotik quote'lu
+// pair'ler (ör. KINS/LIQENG, GENE/RAY) yüksek likiditeye sahip olsa da USD fiyatı YANLIŞ hesaplanır
+// ($19.64, $17.15 gibi → $19B mcap). Bu yüzden pair seçiminde standart-quote HER ZAMAN öncelikli,
+// sonra likidite. (Hiç standart-quote yoksa fallback: en likit egzotik.)
+const STD_QUOTE = new Set(['SOL', 'WSOL', 'USDC', 'USDT']);
+const pairScore = (p: any): number => {
+  const liq = Number(p?.liquidity?.usd || 0);
+  const std = STD_QUOTE.has(String(p?.quoteToken?.symbol || '').toUpperCase());
+  return (std ? 1e15 : 0) + liq; // standart-quote her egzotiği yener; eşitse likidite
+};
+
 // Next.js fetch cache: 60sn revalidate → API'yi dövmeden "anlık"a yakın.
 export async function fetchMarkets(addresses: string[]): Promise<Record<string, TokenMarket>> {
   const out: Record<string, TokenMarket> = {};
+  const score: Record<string, number> = {};
   const list = addresses.filter(Boolean);
   if (!list.length) return out;
 
@@ -35,14 +47,15 @@ export async function fetchMarkets(addresses: string[]): Promise<Record<string, 
       if (!r.ok) continue;
       const data = (await r.json()) as { pairs?: any[] };
       const pairs = data.pairs || [];
-      // token adresi başına en yüksek likiditeli SOLANA pair (aynı adres başka zincirde de olabilir)
+      // token adresi başına EN İYİ pair: standart-quote öncelikli, sonra likidite (yanlış USD fiyatı önlenir)
       for (const p of pairs) {
         if (p?.chainId && p.chainId !== 'solana') continue;
         const addr: string = p?.baseToken?.address;
         if (!addr) continue;
         const liq = Number(p?.liquidity?.usd || 0);
-        const prev = out[addr];
-        if (prev && prev.liquidityUsd >= liq) continue;
+        const sc = pairScore(p);
+        if (addr in score && score[addr] >= sc) continue;
+        score[addr] = sc;
         out[addr] = {
           address: addr,
           priceUsd: Number(p?.priceUsd || 0),
