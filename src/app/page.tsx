@@ -9,7 +9,7 @@ import { prisma } from '@/lib/prisma';
 import { usd, compact, pct, timeAgo, shortAddr } from '@/lib/format';
 import { GameIcon } from '@/components/GameIcon';
 
-export const revalidate = 60; // sayfa 60sn cache — DexScreener'a yakın-anlık
+export const dynamic = 'force-dynamic'; // runtime render — build'de DB'ye gitme (Neon build-sandbox'tan erişilemiyor)
 
 export default async function Discover() {
   const [games, recentPosts] = await Promise.all([

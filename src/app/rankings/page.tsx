@@ -1,7 +1,7 @@
 import { getGamesWithMarkets } from '@/lib/games';
 import { RankingsTable } from '@/components/RankingsTable';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default async function Rankings() {
   const games = await getGamesWithMarkets();
