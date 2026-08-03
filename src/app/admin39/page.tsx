@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { ADMIN_COOKIE, verifySession } from '@/lib/admin-auth';
 import { AdminLogin } from '@/components/admin/AdminLogin';
-import { AdminDashboard, type AdminGame, type AdminEvent } from '@/components/admin/AdminDashboard';
+import { AdminDashboard, type AdminGame, type AdminEvent, type AdminPayment } from '@/components/admin/AdminDashboard';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,12 +10,15 @@ export default async function Admin39() {
   const authed = verifySession(cookies().get(ADMIN_COOKIE)?.value);
   if (!authed) return <AdminLogin />;
 
-  const [rows, evs, postRows, userRows, commentRows] = await Promise.all([
+  const [rows, evs, postRows, userRows, commentRows, boostRows] = await Promise.all([
     prisma.game.findMany({ orderBy: [{ reviewStatus: 'asc' }, { createdAt: 'desc' }] }),
     prisma.event.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),
     prisma.post.findMany({ orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }], take: 60, include: { author: { select: { displayName: true, wallet: true } }, game: { select: { name: true } } } }),
     prisma.user.findMany({ orderBy: { xp: 'desc' }, take: 100 }),
     prisma.comment.findMany({ orderBy: { createdAt: 'desc' }, take: 60, include: { author: { select: { displayName: true, wallet: true } }, post: { select: { game: { select: { name: true } } } } } }),
+    // BOOST ÖDEMELERİ — gerçek para akışı. Mevcut 'boost' sekmesi elle bedava boost veriyor,
+    // ödenen boost'ların kaydı hiçbir yerde görünmüyordu (tx imzası dahil).
+    prisma.boost.findMany({ orderBy: { createdAt: 'desc' }, take: 200, include: { game: { select: { name: true, slug: true } } } }),
   ]);
 
   const games: AdminGame[] = rows.map((g) => ({
@@ -39,5 +42,15 @@ export default async function Admin39() {
     authorWallet: c.author.wallet, gameName: c.post?.game?.name ?? null, createdAt: c.createdAt.toISOString(),
   }));
 
-  return <AdminDashboard games={games} events={events} posts={posts} users={users} comments={comments} />;
+  const payments: AdminPayment[] = boostRows.map((b) => ({
+    id: b.id, gameName: b.game?.name ?? '(silinmiş oyun)', gameSlug: b.game?.slug ?? null,
+    bidderWallet: b.bidderWallet, paidSol: b.paidSol, bidSolPer1k: b.bidSolPer1k,
+    impressions: b.impressions, impressionsServed: b.impressionsServed,
+    status: b.status, txSignature: b.txSignature,
+    createdAt: b.createdAt.toISOString(),
+    activatedAt: b.activatedAt?.toISOString() ?? null,
+    endedAt: b.endedAt?.toISOString() ?? null,
+  }));
+
+  return <AdminDashboard games={games} events={events} posts={posts} users={users} comments={comments} payments={payments} />;
 }

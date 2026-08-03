@@ -29,10 +29,19 @@ const STATUSES = ['MAINNET', 'TGE', 'BETA', 'PRE_TOKEN'];
 const badge = (t: string) =>
   t === 'APPROVED' ? 'bg-up/15 text-up' : t === 'REJECTED' ? 'bg-down/15 text-down' : 'bg-gold/15 text-gold';
 
-export function AdminDashboard({ games: initGames, events: initEvents, posts: initPosts = [], users: initUsers = [], comments: initComments = [] }: { games: AdminGame[]; events: AdminEvent[]; posts?: AdminPost[]; users?: AdminUser[]; comments?: AdminComment[] }) {
+export interface AdminPayment {
+  id: string; gameName: string; gameSlug: string | null;
+  bidderWallet: string; paidSol: number; bidSolPer1k: number;
+  impressions: number; impressionsServed: number;
+  status: string; txSignature: string | null;
+  createdAt: string; activatedAt: string | null; endedAt: string | null;
+}
+
+export function AdminDashboard({ games: initGames, events: initEvents, posts: initPosts = [], users: initUsers = [], comments: initComments = [], payments = [] }: { games: AdminGame[]; events: AdminEvent[]; posts?: AdminPost[]; users?: AdminUser[]; comments?: AdminComment[]; payments?: AdminPayment[] }) {
   const [games, setGames] = useState(initGames);
   const [events, setEvents] = useState(initEvents);
-  const [tab, setTab] = useState<'games' | 'boost' | 'events' | 'posts' | 'comments' | 'users'>('games');
+  const [tab, setTab] = useState<'games' | 'boost' | 'payments' | 'events' | 'posts' | 'comments' | 'users'>('games');
+  const [q, setQ] = useState(''); // oyun arama — 140+ oyunda listeyi gözle taramak imkansızdı
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [editing, setEditing] = useState<AdminGame | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -44,7 +53,11 @@ export function AdminDashboard({ games: initGames, events: initEvents, posts: in
     featured: games.filter((g) => g.featured).length,
   }), [games]);
 
-  const shown = games.filter((g) => filter === 'ALL' || g.reviewStatus === filter);
+  // Arama: ad, ticker ve slug üzerinde. Durum filtresiyle BİRLİKTE çalışır.
+  const nq = q.trim().toLowerCase();
+  const shown = games
+    .filter((g) => filter === 'ALL' || g.reviewStatus === filter)
+    .filter((g) => !nq || g.name.toLowerCase().includes(nq) || (g.ticker || '').toLowerCase().includes(nq) || g.slug.toLowerCase().includes(nq));
 
   async function patchGame(id: string, data: Record<string, unknown>) {
     setBusy(id);
@@ -87,7 +100,7 @@ export function AdminDashboard({ games: initGames, events: initEvents, posts: in
 
       {/* tabs */}
       <div className="mb-4 flex gap-1 border-b border-line">
-        {(['games', 'boost', 'events', 'posts', 'comments', 'users'] as const).map((t) => (
+        {(['games', 'boost', 'payments', 'events', 'posts', 'comments', 'users'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold capitalize ${tab === t ? 'border-acc text-ink' : 'border-transparent text-dim hover:text-ink'}`}>
             {t}
@@ -104,6 +117,17 @@ export function AdminDashboard({ games: initGames, events: initEvents, posts: in
                 {f}{f !== 'ALL' ? ` (${games.filter((g) => g.reviewStatus === f).length})` : ''}
               </button>
             ))}
+
+          {/* ARAMA — 140+ oyunda listeyi gözle taramak imkansızdı; kaldırmak/düzenlemek için önce bulmak lazım */}
+          <div className="mb-3 flex items-center gap-2">
+            <input
+              value={q} onChange={(e) => setQ(e.target.value)}
+              placeholder="Search games by name, ticker or slug…"
+              className="w-full rounded-lg border border-line bg-panel2 px-3 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-acc"
+            />
+            {q && <button onClick={() => setQ('')} className="rounded-lg bg-panel2 px-3 py-2 text-xs font-semibold text-dim hover:text-ink">Clear</button>}
+          </div>
+          <p className="mb-2 text-xs text-faint">{shown.length} of {games.length} games</p>
           </div>
 
           <div className="space-y-2">
@@ -168,6 +192,62 @@ export function AdminDashboard({ games: initGames, events: initEvents, posts: in
                   </div>
                 );
               })}
+          </div>
+        </div>
+      )}
+
+      {/* ÖDEMELER — gerçek para akışı. 'boost' sekmesi elle BEDAVA boost veriyor;
+          ödenen boost'ların kaydı (tutar, cüzdan, tx imzası) hiçbir yerde görünmüyordu. */}
+      {tab === 'payments' && (
+        <div>
+          {(() => {
+            const paid = payments.filter((b) => b.paidSol > 0);
+            const total = paid.reduce((a, b) => a + b.paidSol, 0);
+            return (
+              <div className="mb-3 flex flex-wrap gap-4 text-sm">
+                <span className="text-dim">Total received: <b className="text-gold">{total.toFixed(3)} SOL</b></span>
+                <span className="text-dim">Paid boosts: <b className="text-ink">{paid.length}</b></span>
+                <span className="text-dim">Records: <b className="text-ink">{payments.length}</b></span>
+              </div>
+            );
+          })()}
+          {payments.length === 0 && <p className="card p-6 text-center text-dim">No boost payments yet.</p>}
+          <div className="space-y-2">
+            {payments.map((b) => (
+              <div key={b.id} className="card p-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-semibold text-ink">
+                      {b.gameSlug ? <a href={`/game/${b.gameSlug}`} className="hover:text-acc">{b.gameName}</a> : b.gameName}
+                    </div>
+                    <div className="truncate font-mono text-[11px] text-faint">{b.bidderWallet}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold text-gold">{b.paidSol} SOL</div>
+                    <div className="text-[11px] text-faint">{b.bidSolPer1k} /1k impr</div>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                    b.status === 'ACTIVE' ? 'bg-green-500/15 text-green-400'
+                    : b.status === 'PENDING_PAYMENT' ? 'bg-yellow-500/15 text-yellow-400'
+                    : 'bg-panel2 text-dim'}`}>{b.status}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-faint">
+                  <span>Impressions: <b className="text-dim">{b.impressionsServed.toLocaleString()} / {b.impressions.toLocaleString()}</b></span>
+                  <span>Created: {new Date(b.createdAt).toLocaleString()}</span>
+                  {b.activatedAt && <span>Activated: {new Date(b.activatedAt).toLocaleString()}</span>}
+                  {b.endedAt && <span>Ended: {new Date(b.endedAt).toLocaleString()}</span>}
+                </div>
+                {b.txSignature ? (
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <span className="text-[11px] text-faint">TX</span>
+                    <a href={`https://solscan.io/tx/${b.txSignature}`} target="_blank" rel="noreferrer"
+                       className="truncate font-mono text-[11px] text-acc hover:underline">{b.txSignature}</a>
+                  </div>
+                ) : (
+                  <div className="mt-1.5 text-[11px] text-yellow-400">⚠ No transaction signature recorded</div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
