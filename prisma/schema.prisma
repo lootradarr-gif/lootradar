@@ -113,6 +113,10 @@ model User {
   xp          Int      @default(0)
   level       Int      @default(1)
   banned      Boolean  @default(false)
+  // X (Twitter) bağı — @unique: bir handle yalnızca TEK cüzdana bağlanabilir,
+  // aksi hâlde aynı hesabın tweet'leri 10 cüzdana XP kazandırırdı.
+  xHandle     String?  @unique
+  xLinkedAt   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   posts       Post[]
@@ -255,4 +259,19 @@ model PoolEntry {
 
   @@unique([roundId, wallet])
   @@index([roundId, eligible])
+}
+
+/// X paylaşımı karşılığı verilen XP'nin defteri.
+/// tweetId @unique → aynı gönderi ikinci kez XP kazandıramaz (tekrar koruması).
+model XShare {
+  id        String   @id @default(cuid())
+  tweetId   String   @unique
+  wallet    String
+  handle    String
+  url       String
+  xp        Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([wallet, createdAt])
+  @@index([handle])
 }

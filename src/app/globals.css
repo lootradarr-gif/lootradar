@@ -142,3 +142,78 @@ html { transition: background-color .25s ease; }
 @keyframes boost-glow-kf { 0%, 100% { box-shadow: 0 0 0 1px rgb(var(--c-gold) / 0.35), 0 0 14px -4px rgb(var(--c-gold) / 0.35); } 50% { box-shadow: 0 0 0 1px rgb(var(--c-gold) / 0.6), 0 0 22px -2px rgb(var(--c-gold) / 0.5); } }
 @keyframes star-twinkle { 0% { transform: scale(1); } 40% { transform: scale(1.2); } 80% { transform: scale(.8); } 100% { transform: scale(1); } }
 @keyframes rotate-center { 0% { transform: translateX(24px) rotate(0deg); } 100% { transform: translateX(24px) rotate(360deg); } }
+
+/* ══ FX BUTONLARI + HAVUZ SAYFASI EFEKTLERİ ══
+   Mevcut .btn ailesini BOZMAZ; üstüne binen "yükseltilmiş" varyantlar.
+   Hepsi transform/opacity/box-shadow ile çalışır (GPU-dostu, layout tetiklemez). */
+
+/* parlayan altın buton — hover'da ışık taraması geçer */
+.btn-fx {
+  position: relative; overflow: hidden; isolation: isolate;
+  transition: transform .18s cubic-bezier(.2,.7,.2,1), box-shadow .25s ease, filter .2s ease;
+}
+.btn-fx::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.45) 50%, transparent 65%);
+  transform: translateX(-130%); transition: transform .65s cubic-bezier(.2,.7,.2,1);
+}
+.btn-fx:hover::after { transform: translateX(130%); }
+.btn-fx:hover { transform: translateY(-2px); }
+.btn-fx:active { transform: translateY(0) scale(.98); }
+
+.btn-gold-fx {
+  @apply btn btn-fx font-bold;
+  color: #1a1204;
+  background: linear-gradient(160deg, #ffd977 0%, rgb(var(--c-gold)) 45%, #d99a12 100%);
+  box-shadow: 0 6px 20px -8px rgb(var(--c-gold) / .8), inset 0 1px 0 rgba(255,255,255,.55);
+}
+.btn-gold-fx:hover { box-shadow: 0 10px 28px -8px rgb(var(--c-gold) / .95), inset 0 1px 0 rgba(255,255,255,.65); }
+
+.btn-acc-fx {
+  @apply btn btn-fx font-bold text-white;
+  background: linear-gradient(160deg, rgb(var(--c-acc2)) 0%, rgb(var(--c-acc)) 55%, #1f5fc4 100%);
+  box-shadow: 0 6px 20px -8px rgb(var(--c-acc) / .9), inset 0 1px 0 rgba(255,255,255,.3);
+}
+.btn-acc-fx:hover { box-shadow: 0 10px 28px -8px rgb(var(--c-acc) / 1), inset 0 1px 0 rgba(255,255,255,.4); }
+
+/* nabız atan "canlı" noktası */
+.live-dot { position: relative; }
+.live-dot::before {
+  content: ''; position: absolute; inset: -4px; border-radius: 999px;
+  border: 1px solid rgb(var(--c-up) / .6); animation: live-ring-kf 1.8s ease-out infinite;
+}
+@keyframes live-ring-kf {
+  0% { transform: scale(.7); opacity: .9; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+/* havuz rakamı — altın gradyan + yavaş kayan parıltı.
+   GÜVENLİK AĞI: gradyan yalnızca background-clip:text destekleniyorsa devreye girer.
+   Desteklenmiyorsa metin düz altın kalır — asla görünmez olmaz. */
+.pool-figure { color: rgb(var(--c-gold)); }
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+.pool-figure {
+  background: linear-gradient(100deg, #ffe9a8 10%, rgb(var(--c-gold)) 35%, #fff4cf 50%, rgb(var(--c-gold)) 65%, #e0a520 90%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  animation: pool-sheen-kf 6s linear infinite;
+  filter: drop-shadow(0 0 26px rgb(var(--c-gold) / .35));
+}
+}
+@keyframes pool-sheen-kf { to { background-position: -220% 0; } }
+
+/* geri sayım hanesi — hafif iç derinlik */
+.cd-cell {
+  background: linear-gradient(180deg, rgb(var(--c-panel2)), rgb(var(--c-panel)));
+  box-shadow: inset 0 1px 0 rgb(var(--c-line2) / .8), 0 4px 14px -8px rgba(0,0,0,.6);
+}
+
+/* kazanan satırı hover'da hafif kalkar */
+.rank-row { transition: transform .18s cubic-bezier(.2,.7,.2,1), border-color .2s ease; }
+.rank-row:hover { transform: translateX(3px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-fx::after, .live-dot::before, .pool-figure { animation: none; transition: none; }
+  .btn-fx:hover, .rank-row:hover { transform: none; }
+}

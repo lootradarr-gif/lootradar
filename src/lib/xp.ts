@@ -2,7 +2,7 @@
 import { prisma } from './prisma';
 import { levelFromXp } from './levels';
 
-export type XpReason = 'post' | 'comment' | 'vote' | 'like_received' | 'daily';
+export type XpReason = 'post' | 'comment' | 'vote' | 'like_received' | 'daily' | 'x_share';
 
 // { verilen miktar, günlük event cap sayısı }
 const RULES: Record<XpReason, { amt: number; cap: number }> = {
@@ -11,6 +11,9 @@ const RULES: Record<XpReason, { amt: number; cap: number }> = {
   vote: { amt: 5, cap: 1 },
   like_received: { amt: 1, cap: 20 },
   daily: { amt: 2, cap: 1 },
+  // X paylaşımı en değerli eylem: siteyi dışarıya taşıyor. Bu yüzden en yüksek XP.
+  // Cap 2/gün — spam'i sınırlar ama günde iki paylaşımı ödüllendirir.
+  x_share: { amt: 15, cap: 2 },
 };
 
 const utcDay = (d = new Date()) => d.toISOString().slice(0, 10);

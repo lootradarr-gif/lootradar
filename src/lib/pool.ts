@@ -10,7 +10,20 @@
 import { LOOT } from './token';
 
 /** Havuzdan pay almak için gereken minimum $LOOT (okunabilir birim). */
-export const POOL_MIN_HOLD = 500_000;
+export const POOL_MIN_HOLD = 100_000;
+
+/** Havuzu paylaşan kişi sayısı — sadece uygun olanların ilk N'i. */
+export const POOL_TOP_N = 10;
+
+/** XP kaynakları — sayfada "nasıl kazanılır" bölümünde gösterilir. lib/xp.ts RULES ile AYNI kalmalı. */
+export const XP_RULES = [
+  { icon: '📝', label: 'Write a post', xp: 10, cap: '5×/day' },
+  { icon: '💬', label: 'Leave a comment', xp: 3, cap: '10×/day' },
+  { icon: '⬆️', label: 'Vote on a game', xp: 5, cap: '1×/day' },
+  { icon: '❤️', label: 'Get a like', xp: 1, cap: '20×/day' },
+  { icon: '📅', label: 'Daily visit', xp: 2, cap: '1×/day' },
+  { icon: '🐦', label: 'Share on X (verified)', xp: 15, cap: '2×/day' },
+];
 
 /** Ham birime çevir — zincir bakiyesi ham gelir. */
 export const minHoldRaw = () => BigInt(POOL_MIN_HOLD) * BigInt(10 ** LOOT.decimals);
@@ -46,13 +59,17 @@ export function daysOfWeek(d = new Date()): string[] {
 }
 
 /**
- * XP payına göre havuzu böl. Toplam XP 0 ise kimse alamaz.
- * Yuvarlama AŞAĞI — havuzdan fazla dağıtmak imkansız olsun.
+ * XP payına göre havuzu böl — SADECE ilk POOL_TOP_N kişiye.
+ *
+ * Neden ilk 10: havuzu 200 kişiye bölmek herkese anlamsız miktar bırakır ve yarışma
+ * hissi ölür. Sınırlı sayıda kazanan, sıralamayı gerçek bir rekabete çevirir.
+ * Yuvarlama AŞAĞI — havuzdan fazla dağıtmak imkânsız olsun.
  */
 export function shareOut(pool: number, rows: { wallet: string; xp: number }[]): Map<string, number> {
-  const total = rows.reduce((a, r) => a + r.xp, 0);
+  const top = [...rows].sort((a, b) => b.xp - a.xp).slice(0, POOL_TOP_N);
+  const total = top.reduce((a, r) => a + r.xp, 0);
   const out = new Map<string, number>();
   if (total <= 0) return out;
-  for (const r of rows) out.set(r.wallet, Math.floor((pool * r.xp) / total));
+  for (const r of top) out.set(r.wallet, Math.floor((pool * r.xp) / total));
   return out;
 }

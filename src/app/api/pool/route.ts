@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { POOL_MIN_HOLD, weekKey, weekRange, daysOfWeek, shareOut } from '@/lib/pool';
+import { POOL_MIN_HOLD, POOL_TOP_N, XP_RULES, weekKey, weekRange, daysOfWeek, shareOut } from '@/lib/pool';
 import { tokenBalance } from '@/lib/spl-verify';
 import { LOOT, lootLive } from '@/lib/token';
 
@@ -18,6 +18,10 @@ export async function GET(req: Request) {
   // bu hafta dağıtılacak havuz (admin önceden açar); yoksa 0 göster
   const round = await prisma.poolRound.findUnique({ where: { weekKey: wk } });
   const pool = round?.poolLoot ?? 0;
+  // Tur tanımlıysa ONUN tarihleri geçerli — havuz haftanın ortasında da başlayabilir.
+  const sAt = round?.startsAt ?? start;
+  const eAt = round?.endsAt ?? end;
+  const live = Date.now() >= sAt.getTime();
 
   // haftalık XP toplamı — XpLog.day string olduğu için gün listesiyle sorgulanır
   const grouped = await prisma.xpLog.groupBy({
@@ -57,8 +61,9 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({
-    weekKey: wk, startsAt: start.toISOString(), endsAt: end.toISOString(),
-    poolLoot: pool, minHold: POOL_MIN_HOLD, totalXp, settled: !!round?.settledAt,
+    weekKey: wk, startsAt: sAt.toISOString(), endsAt: eAt.toISOString(), live,
+    poolLoot: pool, minHold: POOL_MIN_HOLD, topN: POOL_TOP_N, xpRules: XP_RULES,
+    totalXp, settled: !!round?.settledAt,
     rows: rows.map((r, i) => ({
       rank: i + 1, wallet: r.wallet, xp: r.xp,
       displayName: uMap.get(r.wallet)?.displayName ?? null,
