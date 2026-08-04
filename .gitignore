@@ -26,3 +26,6 @@ tsconfig.tsbuildinfo
 .ck.tmp
 .env.prod.tmp
 .env.local
+
+# tek seferlik bakim betikleri
+.*.mjs
