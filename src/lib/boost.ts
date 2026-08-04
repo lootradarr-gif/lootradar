@@ -14,13 +14,13 @@ export const LEGACY_SOL_TREASURY = '6zDgRPjYU27eJFCR9RUCd9eeJjmY5v6rVgrhnmaDx6Rs
 export const LAMPORTS_PER_SOL = 1_000_000_000;
 
 /**
- * Solana'nın bilinen yakma (incinerator) adresi. Buraya giden token bir daha çıkarılamaz —
- * özel anahtarı yoktur. "Yarısı yakıldı" iddiası böylece söz değil, herkesin Solscan'den
- * doğrulayabileceği bir olgu olur.
+ * Ödemenin yakıma AYRILAN yüzdesi. Kalanı haftalık POOL'u fonlar.
+ *
+ * ⚠️ Yakma ÖDEME ANINDA olmuyor. Tüm tutar tek transferle hazineye gelir; yakma haftalık
+ * olarak ELLE yapılır. Sebep: ödeme anında yakmak ya iki transferli tx ya da burn komutu
+ * ayrıştırması gerektiriyordu — ikisi de akışı kırılganlaştırıyordu. Bu yüzde muhasebe
+ * içindir: "bu haftaki boost gelirinin ne kadarı yakılacak" sorusunun cevabı.
  */
-export const BURN_ADDRESS = '1nc1nerator11111111111111111111111111111111';
-
-/** Ödemenin yakılan yüzdesi. Kalanı treasury'ye gider ve haftalık POOL'u fonlar. */
 export const BURN_PCT = 50;
 
 export interface BoostTier {
@@ -41,8 +41,11 @@ export const BOOST_TIERS: BoostTier[] = [
 
 export const getTier = (id: string) => BOOST_TIERS.find((t) => t.id === id) ?? null;
 
-/** Toplam ham tutarı hazine/yakma olarak böl. Yakma AŞAĞI yuvarlanır → hazine payı eksik kalmaz. */
-export function splitBoost(totalRaw: bigint): { burn: bigint; treasury: bigint } {
+/**
+ * Gelen tutarın muhasebe bölüşümü — ÖDEME BÖLÜNMEZ, hepsi hazineye gider.
+ * Bu sadece "ne kadarı yakılacak, ne kadarı havuza" hesabıdır (haftalık rapor + POOL).
+ */
+export function splitBoost(totalRaw: bigint): { burn: bigint; pool: bigint } {
   const burn = (totalRaw * BigInt(BURN_PCT)) / 100n;
-  return { burn, treasury: totalRaw - burn };
+  return { burn, pool: totalRaw - burn };
 }

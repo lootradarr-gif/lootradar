@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getTier, splitBoost, BOOST_TREASURY, BURN_ADDRESS, BURN_PCT } from '@/lib/boost';
+import { getTier, splitBoost, BOOST_TREASURY, BURN_PCT } from '@/lib/boost';
 import { usdToLootRaw, lootPriceUsd, rawToLoot } from '@/lib/loot-price';
 import { signQuote, QUOTE_TTL_MS, type QuotePayload } from '@/lib/boost-quote';
 import { LOOT, lootLive } from '@/lib/token';
@@ -26,10 +26,11 @@ export async function POST(req: Request) {
   const totalRaw = await usdToLootRaw(tier.usd);
   if (totalRaw === null) return NextResponse.json({ error: 'Price feed unavailable, try again shortly' }, { status: 503 });
 
-  const { burn, treasury } = splitBoost(totalRaw);
+  // Ödeme BÖLÜNMEZ — tamamı hazineye. burn/pool sadece muhasebe gösterimi.
+  const { burn, pool } = splitBoost(totalRaw);
   const quote: QuotePayload = {
     gameId: game.id, tierId: tier.id,
-    treasury: treasury.toString(), burn: burn.toString(),
+    amount: totalRaw.toString(),
     exp: Date.now() + QUOTE_TTL_MS,
   };
 
@@ -37,8 +38,8 @@ export async function POST(req: Request) {
     quote, signature: signQuote(quote),
     // istemcinin göstereceği/kullanacağı bilgiler
     mint: LOOT.mint, decimals: LOOT.decimals,
-    treasuryAddress: BOOST_TREASURY, burnAddress: BURN_ADDRESS, burnPct: BURN_PCT,
-    totalLoot: rawToLoot(totalRaw), burnLoot: rawToLoot(burn), treasuryLoot: rawToLoot(treasury),
+    treasuryAddress: BOOST_TREASURY, burnPct: BURN_PCT,
+    totalLoot: rawToLoot(totalRaw), burnLoot: rawToLoot(burn), poolLoot: rawToLoot(pool),
     usd: tier.usd, days: tier.days, priceUsd: await lootPriceUsd(),
     expiresInMs: QUOTE_TTL_MS,
   });

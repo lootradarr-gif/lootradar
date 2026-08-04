@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { BOOST_TREASURY, BURN_ADDRESS, getTier } from '@/lib/boost';
-import { verifySplitTokenPayment } from '@/lib/spl-verify';
+import { BOOST_TREASURY, getTier, splitBoost } from '@/lib/boost';
+import { verifyTokenPayment } from '@/lib/spl-verify';
 import { verifyQuote, type QuotePayload } from '@/lib/boost-quote';
 import { LOOT, lootLive } from '@/lib/token';
 import { rawToLoot } from '@/lib/loot-price';
 
-// Boost ödemesi artık SOL değil $LOOT ile, ve TEK tx içinde İKİYE bölünmüş:
-// yarısı treasury'ye, yarısı yakma adresine. İkisi de zincirde doğrulanır — "yarısı
-// yakılıyor" bir vaat değil, ödemenin kendisine yazılmış bir olgu.
+// Boost ödemesi artık SOL değil $LOOT ile. Tutarın TAMAMI hazineye gider; yakma
+// ödeme anında DEĞİL, haftalık olarak elle yapılır (bkz. lib/boost.ts BURN_PCT).
 export async function POST(req: Request) {
   if (!lootLive()) return NextResponse.json({ error: 'Token not live yet' }, { status: 503 });
 
@@ -37,17 +36,15 @@ export async function POST(req: Request) {
   const existing = await prisma.boost.findUnique({ where: { txSignature: signature } });
   if (existing) return NextResponse.json({ error: 'This transaction was already used' }, { status: 409 });
 
-  // ── ON-CHAIN DOĞRULAMA (bölünmüş ödeme) ──
-  const need = { treasury: BigInt(quote.treasury), burn: BigInt(quote.burn) };
-  const check = await verifySplitTokenPayment(
-    signature, payerWallet, BOOST_TREASURY, BURN_ADDRESS, LOOT.mint, need.treasury, need.burn,
-  );
+  // ── ON-CHAIN DOĞRULAMA — tamamı hazineye tek transfer ──
+  const need = BigInt(quote.amount);
+  const check = await verifyTokenPayment(signature, payerWallet, BOOST_TREASURY, LOOT.mint, need);
   if (!check.ok) return NextResponse.json({ error: `Payment not verified (${check.reason})` }, { status: 402 });
 
   // süreyi uzat: zaten boost'luysa mevcut bitişin üstüne ekle
   const base = game.featuredUntil && game.featuredUntil > new Date() ? game.featuredUntil : new Date();
   const until = new Date(base.getTime() + tier.days * 86_400_000);
-  const totalLoot = rawToLoot(need.treasury + need.burn);
+  const totalLoot = rawToLoot(need);
 
   try {
     await prisma.$transaction([
@@ -67,6 +64,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true, featuredUntil: until.toISOString(), days: tier.days,
-    paidLoot: totalLoot, burnedLoot: rawToLoot(need.burn),
+    paidLoot: totalLoot, burnEarmarked: rawToLoot(splitBoost(need).burn),
   });
 }

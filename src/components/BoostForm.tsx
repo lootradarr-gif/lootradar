@@ -52,21 +52,18 @@ export function BoostForm({ games }: { games: BoostGame[] }) {
       const q = await qr.json();
       if (!qr.ok) throw new Error(q?.error || 'Could not get a price quote');
 
-      // 2) TEK tx, İKİ transfer: yarısı hazineye, yarısı yakma adresine.
+      // 2) TEK transfer — tutarın tamamı hazineye. Yakma ödeme anında değil, haftalık elle.
       const mint = new PublicKey(q.mint);
       const PROG = TOKEN_2022_PROGRAM_ID;
       const from = getAssociatedTokenAddressSync(mint, publicKey, false, PROG);
+      const owner = new PublicKey(q.treasuryAddress);
+      const to = getAssociatedTokenAddressSync(mint, owner, true, PROG);
       const tx = new Transaction();
-
-      for (const [addr, amount] of [[q.treasuryAddress, q.quote.treasury], [q.burnAddress, q.quote.burn]] as [string, string][]) {
-        const owner = new PublicKey(addr);
-        const to = getAssociatedTokenAddressSync(mint, owner, true, PROG);
-        // Alıcının token hesabı yoksa ilk ödeyen oluşturur (yakma adresi için de gerekli).
-        if (!(await connection.getAccountInfo(to))) {
-          tx.add(createAssociatedTokenAccountInstruction(publicKey, to, owner, mint, PROG));
-        }
-        tx.add(createTransferCheckedInstruction(from, mint, to, publicKey, BigInt(amount), q.decimals, [], PROG));
+      // Hazinenin token hesabı yoksa ilk ödeyen oluşturur (yeni cüzdan hiç LOOT tutmamış olabilir).
+      if (!(await connection.getAccountInfo(to))) {
+        tx.add(createAssociatedTokenAccountInstruction(publicKey, to, owner, mint, PROG));
       }
+      tx.add(createTransferCheckedInstruction(from, mint, to, publicKey, BigInt(q.quote.amount), q.decimals, [], PROG));
 
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       tx.recentBlockhash = blockhash;
@@ -140,7 +137,7 @@ export function BoostForm({ games }: { games: BoostGame[] }) {
         <div>
           <div className="text-[11px] uppercase tracking-wide text-faint">Total due</div>
           <div className="mono text-2xl font-black text-ink">{fmtLoot(lootFor(tier.usd))} $LOOT</div>
-          <div className="text-xs text-dim">{tier.days} days · <b className="text-acc">50% burned</b> · 50% funds the community pool</div>
+          <div className="text-xs text-dim">{tier.days} days · <b className="text-acc">50% burned weekly</b> · 50% funds the community pool</div>
         </div>
         {connected ? (
           <button onClick={boost} disabled={busy || games.length === 0} className="btn-primary disabled:opacity-60">
@@ -153,8 +150,8 @@ export function BoostForm({ games }: { games: BoostGame[] }) {
 
       {err && <p className="rounded-lg border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">{err}</p>}
       <p className="text-center text-xs text-faint">
-        Prices are pegged in USD — the $LOOT amount follows the live price. Half of every payment
-        is sent to the burn address in the same transaction, verifiable on-chain.
+        Prices are pegged in USD — the $LOOT amount follows the live price. Half of all boost
+        revenue is burned weekly; the other half funds the community pool.
       </p>
     </div>
   );

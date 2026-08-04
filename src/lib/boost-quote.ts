@@ -15,13 +15,12 @@ export const QUOTE_TTL_MS = 10 * 60_000;      // 10dk — cüzdan onayı için f
 export interface QuotePayload {
   gameId: string;
   tierId: string;
-  /** ham LOOT birimi (decimals uygulanmış), string — BigInt JSON'a girmez */
-  treasury: string;
-  burn: string;
+  /** ödenecek TOPLAM ham LOOT birimi (decimals uygulanmış), string — BigInt JSON'a girmez */
+  amount: string;
   exp: number;
 }
 
-const body = (q: QuotePayload) => `${q.gameId}|${q.tierId}|${q.treasury}|${q.burn}|${q.exp}`;
+const body = (q: QuotePayload) => `${q.gameId}|${q.tierId}|${q.amount}|${q.exp}`;
 
 export function signQuote(q: QuotePayload): string {
   return createHmac('sha256', SECRET).update(body(q)).digest('base64url');
