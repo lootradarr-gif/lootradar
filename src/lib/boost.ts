@@ -1,6 +1,16 @@
 // Boost = sabit süre, USD'ye sabitlenmiş $LOOT ücreti. Ödeme İKİYE bölünür:
 // yarısı treasury'ye, yarısı YAKMA adresine — ikisi de aynı tx içinde ve zincirde doğrulanır.
-export const BOOST_TREASURY = '6zDgRPjYU27eJFCR9RUCd9eeJjmY5v6rVgrhnmaDx6Rs';
+/**
+ * $LOOT boost ödemelerinin gittiği hazine.
+ *
+ * ⚠️ BOMB Miner'ın hazinesinden AYRI. İkisi aynı adresi kullanırken LootRadar boost'ları
+ * ile oyun içi alımlar aynı cüzdanda karışıyordu — ödeme denetiminde LootRadar boost'u
+ * "karşılıksız BOMB Miner ödemesi" gibi görünüp yanlış alarm vermişti.
+ */
+export const BOOST_TREASURY = '2fn7RBcLJY7FiBLkevqZ87KGypcQQUBvqERoc8W4vPnW';
+
+/** Eski ortak hazine — geçmiş SOL boost kayıtları buna gitmişti, referans için duruyor. */
+export const LEGACY_SOL_TREASURY = '6zDgRPjYU27eJFCR9RUCd9eeJjmY5v6rVgrhnmaDx6Rs';
 export const LAMPORTS_PER_SOL = 1_000_000_000;
 
 /**
