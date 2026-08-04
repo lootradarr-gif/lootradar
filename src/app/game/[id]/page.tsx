@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
@@ -140,8 +141,11 @@ export default async function GamePage({ params }: { params: { id: string } }) {
                 <h3 className="mb-3 font-bold">Screenshots</h3>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {g.screenshots.map((s, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={i} src={s} alt={`${g.name} screenshot`} className="aspect-video w-full rounded-xl border border-line object-cover" />
+                    <Image
+                      key={i} src={s} alt={`${g.name} screenshot`} width={640} height={360}
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 340px"
+                      className="aspect-video w-full rounded-xl border border-line object-cover"
+                    />
                   ))}
                 </div>
               </div>

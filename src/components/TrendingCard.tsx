@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { GameWithMarket } from '@/lib/games';
 import { price, usd, pct, compact } from '@/lib/format';
@@ -25,8 +26,10 @@ export function TrendingCard({ g, i = 0 }: { g: GameWithMarket; i?: number }) {
       {/* ── BANNER ── */}
       <div className="relative h-32 w-full overflow-hidden">
         {g.bannerUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={g.bannerUrl} alt="" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+          <Image
+            src={g.bannerUrl} alt="" fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
+            className="object-cover transition-transform duration-700 group-hover:scale-110"
+          />
         ) : (
           <div className="h-full w-full transition-transform duration-700 group-hover:scale-110" style={{ background: bannerGradient(g.id) }} />
         )}

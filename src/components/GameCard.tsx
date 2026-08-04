@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { GameWithMarket } from '@/lib/games';
 import { price, usd, pct, compact } from '@/lib/format';
@@ -24,8 +25,10 @@ export function GameCard({ g, i = 0 }: { g: GameWithMarket; i?: number }) {
       {/* ── BANNER ── */}
       <div className="relative h-28 w-full overflow-hidden">
         {g.bannerUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={g.bannerUrl} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <Image
+            src={g.bannerUrl} alt="" fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 320px"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+          />
         ) : (
           <div className="h-full w-full" style={{ background: bannerGradient(g.id) }} />
         )}
