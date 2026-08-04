@@ -32,9 +32,9 @@ export function TokenBar() {
       <span className="shrink-0 text-faint">·</span>
       <span className="shrink-0 text-dim">Pay for boosts with ${LOOT.symbol} — half of every boost is burned</span>
       <span className="shrink-0 text-faint">·</span>
-      <a href={L.pump} target="_blank" rel="noreferrer" className="shrink-0 text-ink hover:text-acc">Buy on pump.fun</a>
+      <a href={L.pump} target="_blank" rel="noreferrer" className="shrink-0 -my-1.5 py-1.5 text-ink hover:text-acc">Buy on pump.fun</a>
       <span className="shrink-0 text-faint">·</span>
-      <a href={L.dex} target="_blank" rel="noreferrer" className="shrink-0 text-ink hover:text-acc">Chart</a>
+      <a href={L.dex} target="_blank" rel="noreferrer" className="shrink-0 -my-1.5 py-1.5 text-ink hover:text-acc">Chart</a>
       <span className="shrink-0 text-faint">·</span>
       {LOOT.supply && <><span className="shrink-0 text-dim">Supply {(LOOT.supply / 1e9).toFixed(0)}B</span><span className="shrink-0 text-faint">·</span></>}
     </>

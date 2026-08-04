@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
@@ -94,7 +95,7 @@ export function BoostForm({ games }: { games: BoostGame[] }) {
         <div className="text-4xl">🚀</div>
         <h2 className="text-xl font-bold">{g?.name} is boosted!</h2>
         <p className="max-w-sm text-sm text-dim">It’s now featured across LootRadar until <b className="text-ink">{until}</b>. Payment confirmed on-chain.</p>
-        <a href="/" className="btn-primary mt-2">See it on the board</a>
+        <Link href="/" className="btn-primary mt-2">See it on the board</Link>
       </div>
     );
   }

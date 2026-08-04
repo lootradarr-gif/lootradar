@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
@@ -86,8 +87,8 @@ export function SubmitForm() {
         <p className="mt-2 max-w-sm text-sm text-dim">Thanks! We’ll review your game and add it to the board — usually within 24 hours. Want the top slot? Boost your game from the Boost page once it’s live.</p>
         <p className="mt-2 text-xs text-faint">Questions? <a href="mailto:lootradarr@gmail.com" className="text-acc hover:underline">lootradarr@gmail.com</a></p>
         <div className="mt-6 flex gap-3">
-          <a href="/" className="btn-primary">Back to Explore</a>
-          <a href="/boost" className="btn-gold">⚡ Boost it</a>
+          <Link href="/" className="btn-primary">Back to Explore</Link>
+          <Link href="/boost" className="btn-gold">⚡ Boost it</Link>
         </div>
       </div>
     );
@@ -116,7 +117,7 @@ export function SubmitForm() {
       </div>
 
       {/* BOOST bilgilendirme kartı */}
-      <a href="/boost" className="flex items-center gap-3 rounded-xl border border-gold/30 bg-gold/[0.06] p-3.5 transition-colors hover:border-gold/60">
+      <Link href="/boost" className="flex items-center gap-3 rounded-xl border border-gold/30 bg-gold/[0.06] p-3.5 transition-colors hover:border-gold/60">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/boost-3d.svg" alt="" width={40} height={40} className="h-10 w-10 shrink-0" />
         <div className="min-w-0 flex-1">
@@ -124,7 +125,7 @@ export function SubmitForm() {
           <div className="text-xs text-dim">Listing is free. Boosting puts you in <b>Trending now</b> + the featured spot across the site — pay in SOL, live in minutes.</div>
         </div>
         <span className="shrink-0 text-gold">→</span>
-      </a>
+      </Link>
 
       {/* proje ikonu — listelerde bu logo görünür */}
       <div>

@@ -8,6 +8,7 @@
 // Sayfa üç işi birden yapmalı: ödülü GÖSTERMEK (havuz + geri sayım), yolu ANLATMAK
 // (XP nasıl kazanılır) ve tokene ERİŞİM vermek (chart + BUY). Bu yüzden tek kolon
 // tablo değil, iki kolonlu bir "kampanya sayfası" düzeni kullanıyoruz.
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Avatar } from '@/components/Avatar';
@@ -136,9 +137,9 @@ export default function PoolPage() {
                 <Emoji e="💰" size={20} /> Buy ${LOOT.symbol}
               </a>
             )}
-            <a href="/community" className="btn-acc-fx px-7 py-3 text-base">
+            <Link href="/community" className="btn-acc-fx px-7 py-3 text-base">
               <Emoji e="⚡" size={20} /> Start earning XP
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -199,7 +200,7 @@ export default function PoolPage() {
                 Top {topN} share the pool · {d?.totalXp ?? 0} XP earned this week
               </p>
             </div>
-            <a href="/community" className="btn-ghost btn-sm">Earn XP →</a>
+            <Link href="/community" className="btn-ghost btn-sm">Earn XP →</Link>
           </div>
 
           {!d && <div className="card p-8 text-center text-dim">Loading…</div>}
@@ -212,7 +213,7 @@ export default function PoolPage() {
                 The board is wide open. Post, comment or vote in Community and you could take
                 #1 with your very first action.
               </p>
-              <a href="/community" className="btn-acc-fx btn-sm mt-4">Be the first →</a>
+              <Link href="/community" className="btn-acc-fx btn-sm mt-4">Be the first →</Link>
             </div>
           )}
 
@@ -291,7 +292,7 @@ export default function PoolPage() {
                 <div className="flex items-center gap-1.5 text-xs font-bold text-ink">
                   <Emoji e="📈" size={15} /> ${LOOT.symbol} live chart
                 </div>
-                <a href={lootLinks().dex} target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-acc hover:underline">
+                <a href={lootLinks().dex} target="_blank" rel="noreferrer" className="-my-1 py-1 text-[11px] font-semibold text-acc hover:underline">
                   Open ↗
                 </a>
               </div>
@@ -350,7 +351,7 @@ export default function PoolPage() {
               </div>
             </div>
 
-            <a href="/community" className="btn-acc-fx btn-sm mt-4 w-full">Go to Community →</a>
+            <Link href="/community" className="btn-acc-fx btn-sm mt-4 w-full">Go to Community →</Link>
           </div>
 
           {/* kurallar */}

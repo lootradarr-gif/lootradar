@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
@@ -58,12 +59,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="text-faint">— the Web3 game radar</span>
             </div>
             <div className="flex flex-wrap gap-5">
-              <a className="hover:text-dim" href="/rankings">Rankings</a>
-              <a className="hover:text-dim" href="/community">Community</a>
-              <a className="hover:text-dim" href="/submit">Submit a game</a>
-              <a className="hover:text-dim" href="/boost">Boost</a>
-              <a className="hover:text-dim" href="https://x.com/LootRadario" target="_blank" rel="noopener noreferrer">X ↗</a>
-              <a className="hover:text-dim" href="mailto:lootradarr@gmail.com">Contact</a>
+              <Link className="-my-1.5 py-1.5 hover:text-dim" href="/rankings">Rankings</Link>
+              <Link className="-my-1.5 py-1.5 hover:text-dim" href="/community">Community</Link>
+              <Link className="-my-1.5 py-1.5 hover:text-dim" href="/submit">Submit a game</Link>
+              <Link className="-my-1.5 py-1.5 hover:text-dim" href="/boost">Boost</Link>
+              <a className="-my-1.5 py-1.5 hover:text-dim" href="https://x.com/LootRadario" target="_blank" rel="noopener noreferrer">X ↗</a>
+              <a className="-my-1.5 py-1.5 hover:text-dim" href="mailto:lootradarr@gmail.com">Contact</a>
             </div>
           </div>
           <p className="mt-6 text-xs text-faint">Market data via DexScreener. Not financial advice. Player counts are self-reported by projects. Get in touch: <a href="mailto:lootradarr@gmail.com" className="text-dim hover:text-acc">lootradarr@gmail.com</a></p>
