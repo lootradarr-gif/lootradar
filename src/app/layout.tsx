@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Nav } from '@/components/Nav';
+import { TokenBar } from '@/components/TokenBar';
 import { MobileTabBar } from '@/components/MobileTabBar';
 import { SolanaProvider } from '@/components/WalletProvider';
 import { GoogleAnalytics } from '@next/third-parties/google';
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}" }} />
         <SolanaProvider>
         <Nav />
+        <TokenBar />
         <main className="mx-auto w-full max-w-[1240px] px-4 pb-24 sm:px-6">{children}</main>
         <MobileTabBar />
         <footer className="mx-auto max-w-[1240px] border-t border-line px-4 py-10 text-sm text-faint sm:px-6">
