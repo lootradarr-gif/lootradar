@@ -7,9 +7,13 @@ export const LOOT = {
   symbol: 'LOOT',
   name: 'LOOT RADAR',
   /** pump.fun mint adresi — token oluşturulunca buraya yapıştır. */
-  mint: '',
-  /** Toplam arz (pump.fun standardı 1B). Bilinmiyorsa null bırak, gösterilmez. */
+  mint: 'BGyGojJAE8jebxoe5zx7nDU2Fmjp1KABkYBV5rC7pump',
+  /** Toplam arz — zincirde doğrulandı. */
   supply: 1_000_000_000 as number | null,
+  /** Ondalık (Token-2022, zincirden). Bakiye/eşik hesaplarında kullanılır. */
+  decimals: 6,
+  /** Mint ve freeze yetkileri REVOKE edilmiş — zincirde doğrulandı 2026-08-04. */
+  authoritiesRevoked: true,
 };
 
 export const lootLive = () => LOOT.mint.length >= 32;
