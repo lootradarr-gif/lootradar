@@ -222,3 +222,37 @@ model Event {
 
   @@index([createdAt])
 }
+
+// ══════════════ COMMUNITY POOL ══════════════
+// Haftalık $LOOT havuzu. Uygunluk şartı: minimum LOOT TUTMAK (bkz. lib/pool.ts).
+//
+// NEDEN TUTMA ŞARTI: XP'ye doğrudan ödül bağlamak bot çiftliği davet ediyor. Günlük
+// cap'ler tek cüzdanı sınırlıyor ama cüzdan açmak bedava — 100 cüzdanla cap 100 katına
+// çıkar. Minimum bakiye şartı sybil'i pahalı yapar VE token'a gerçek talep yaratır.
+model PoolRound {
+  id        String      @id @default(cuid())
+  weekKey   String      @unique          // "2026-W31" — çift settle koruması
+  poolLoot  Float                        // bu hafta dağıtılan toplam LOOT
+  minHold   Float                        // o haftaki uygunluk eşiği (sonradan değişse bile kayıt sabit)
+  startsAt  DateTime
+  endsAt    DateTime
+  settledAt DateTime?
+  entries   PoolEntry[]
+
+  @@index([weekKey])
+}
+
+model PoolEntry {
+  id       String    @id @default(cuid())
+  roundId  String
+  round    PoolRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  wallet   String
+  xp       Int                            // o haftaki XP
+  balance  Float                          // settle anındaki LOOT bakiyesi (snapshot)
+  eligible Boolean                        // balance >= minHold
+  amount   Float     @default(0)          // kazandığı LOOT
+  paidTx   String?                        // elle ödeme sonrası tx imzası
+
+  @@unique([roundId, wallet])
+  @@index([roundId, eligible])
+}
