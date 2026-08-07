@@ -11,7 +11,7 @@ export default async function Boost() {
     select: { id: true, name: true, ticker: true, icon: true, iconUrl: true },
   });
   const games: BoostGame[] = rows;
-  const cheapest = Math.min(...BOOST_TIERS.map((t) => t.usd));
+  const cheapest = Math.min(...BOOST_TIERS.map((t) => t.sol));
 
   return (
     <div className="mx-auto max-w-2xl pt-8">
@@ -21,7 +21,7 @@ export default async function Boost() {
         <h1 className="mt-3 text-3xl font-black sm:text-4xl">Get to the top of the radar</h1>
         <p className="mx-auto mt-2 max-w-lg text-dim">
           Feature your game across LootRadar — homepage Trending, rankings, everywhere — with a ★ badge and priority placement.
-          Pay once in $LOOT, stay boosted for the full period. From ~${cheapest}. Half of every payment is burned.
+          Pay once in SOL, stay boosted for the full period. From {cheapest} SOL — flat pricing, no token conversion.
         </p>
       </div>
 

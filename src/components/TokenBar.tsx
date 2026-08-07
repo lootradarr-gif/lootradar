@@ -30,7 +30,9 @@ export function TokenBar() {
         ${LOOT.symbol} IS LIVE
       </span>
       <span className="shrink-0 text-faint">·</span>
-      <span className="shrink-0 text-dim">Pay for boosts with ${LOOT.symbol} — half of every boost is burned</span>
+      <span className="shrink-0 text-dim">Hold 100K ${LOOT.symbol} to enter the weekly community pool</span>
+      <span className="shrink-0 text-faint">·</span>
+      <a href="/pool" className="shrink-0 -my-1.5 py-1.5 font-semibold text-gold hover:text-acc">5M ${LOOT.symbol} up for grabs this week →</a>
       <span className="shrink-0 text-faint">·</span>
       <a href={L.pump} target="_blank" rel="noreferrer" className="shrink-0 -my-1.5 py-1.5 text-ink hover:text-acc">Buy on pump.fun</a>
       <span className="shrink-0 text-faint">·</span>

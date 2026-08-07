@@ -1,15 +1,10 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
-import { Transaction, PublicKey } from '@solana/web3.js';
-import {
-  getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction,
-  createTransferCheckedInstruction, TOKEN_2022_PROGRAM_ID,
-} from '@solana/spl-token';
-import { BOOST_TIERS, getTier } from '@/lib/boost';
-import { LOOT } from '@/lib/token';
+import { Transaction, PublicKey, SystemProgram } from '@solana/web3.js';
+import { BOOST_TIERS, BOOST_TREASURY, getTier, tierLamports } from '@/lib/boost';
 
 export type BoostGame = { id: string; name: string; ticker: string; icon: string; iconUrl: string | null };
 
@@ -23,20 +18,6 @@ export function BoostForm({ games }: { games: BoostGame[] }) {
   const [state, setState] = useState<'idle' | 'paying' | 'verifying' | 'ok' | 'err'>('idle');
   const [err, setErr] = useState('');
   const [until, setUntil] = useState('');
-  // Canlı $LOOT fiyatı — paketler USD'ye sabit, gösterilen LOOT tutarı fiyata göre değişir.
-  const [price, setPrice] = useState<number | null>(null);
-  useEffect(() => {
-    let dead = false;
-    const load = () => fetch('/api/boost/price').then((r) => r.json())
-      .then((d) => { if (!dead && d?.priceUsd) setPrice(d.priceUsd); }).catch(() => {});
-    load();
-    const id = setInterval(load, 60_000);   // 1dk'da bir tazele
-    return () => { dead = true; clearInterval(id); };
-  }, []);
-  const lootFor = (usd: number) => (price ? usd / price : null);
-  const fmtLoot = (n: number | null) => n === null ? '—'
-    : n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : n.toFixed(0);
-
   const tier = getTier(tierId)!;
 
   async function boost() {
@@ -44,39 +25,26 @@ export function BoostForm({ games }: { games: BoostGame[] }) {
     if (!gameId) { setErr('Pick a game to boost.'); return; }
     setErr(''); setState('paying');
     try {
-      // 1) FİYAT KİLİDİ — sunucu tutarı hesaplar ve imzalar. Cüzdan onayı sırasında
-      //    fiyat oynasa bile ödeme reddedilmez (bkz. lib/boost-quote.ts).
-      const qr = await fetch('/api/boost/quote', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ gameId, tierId }),
-      });
-      const q = await qr.json();
-      if (!qr.ok) throw new Error(q?.error || 'Could not get a price quote');
-
-      // 2) TEK transfer — tutarın tamamı hazineye. Yakma ödeme anında değil, haftalık elle.
-      const mint = new PublicKey(q.mint);
-      const PROG = TOKEN_2022_PROGRAM_ID;
-      const from = getAssociatedTokenAddressSync(mint, publicKey, false, PROG);
-      const owner = new PublicKey(q.treasuryAddress);
-      const to = getAssociatedTokenAddressSync(mint, owner, true, PROG);
-      const tx = new Transaction();
-      // Hazinenin token hesabı yoksa ilk ödeyen oluşturur (yeni cüzdan hiç LOOT tutmamış olabilir).
-      if (!(await connection.getAccountInfo(to))) {
-        tx.add(createAssociatedTokenAccountInstruction(publicKey, to, owner, mint, PROG));
-      }
-      tx.add(createTransferCheckedInstruction(from, mint, to, publicKey, BigInt(q.quote.amount), q.decimals, [], PROG));
-
+      // SABİT fiyat → teklif/fiyat kilidi gerekmiyor. Tutar hem burada hem sunucuda
+      // aynı tablodan okunur; sunucu istemcinin gönderdiği tutara güvenmez.
+      const tx = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: new PublicKey(BOOST_TREASURY),
+          lamports: tierLamports(tier),
+        }),
+      );
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       tx.recentBlockhash = blockhash;
       tx.feePayer = publicKey;
       const sig = await sendTransaction(tx, connection);
       await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
 
-      // 3) DOĞRULAMA — sunucu iki transferi de zincirde kontrol eder
+      // DOĞRULAMA — sunucu transferi zincirde kontrol eder
       setState('verifying');
       const r = await fetch('/api/boost', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ signature: sig, payerWallet: publicKey.toBase58(), quote: q.quote, quoteSignature: q.signature }),
+        body: JSON.stringify({ signature: sig, payerWallet: publicKey.toBase58(), tierId, gameId }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || 'Verification failed');
@@ -126,8 +94,8 @@ export function BoostForm({ games }: { games: BoostGame[] }) {
               className={`card relative p-4 text-left transition-colors ${tierId === t.id ? 'border-acc ring-1 ring-acc/40' : 'hover:border-line2'}`}>
               {t.popular && <span className="absolute -top-2 left-4 rounded-full bg-acc px-2 py-0.5 text-[10px] font-bold text-white">POPULAR</span>}
               <div className="text-sm font-semibold text-dim">{t.label}</div>
-              <div className="mono mt-1 text-2xl font-black text-ink">{fmtLoot(lootFor(t.usd))} <span className="text-sm text-faint">$LOOT</span></div>
-              <div className="mt-0.5 text-xs text-dim">{t.days} days featured · ~${t.usd}</div>
+              <div className="mono mt-1 text-2xl font-black text-ink">{t.sol} <span className="text-sm text-faint">SOL</span></div>
+              <div className="mt-0.5 text-xs text-dim">{t.days} days featured</div>
             </button>
           ))}
         </div>
@@ -137,12 +105,12 @@ export function BoostForm({ games }: { games: BoostGame[] }) {
       <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
           <div className="text-[11px] uppercase tracking-wide text-faint">Total due</div>
-          <div className="mono text-2xl font-black text-ink">{fmtLoot(lootFor(tier.usd))} $LOOT</div>
-          <div className="text-xs text-dim">{tier.days} days · <b className="text-acc">50% burned weekly</b> · 50% funds the community pool</div>
+          <div className="mono text-2xl font-black text-ink">{tier.sol} SOL</div>
+          <div className="text-xs text-dim">{tier.days} days featured on LootRadar</div>
         </div>
         {connected ? (
           <button onClick={boost} disabled={busy || games.length === 0} className="btn-primary disabled:opacity-60">
-            {state === 'paying' ? 'Confirm in wallet…' : state === 'verifying' ? 'Verifying payment…' : `Pay ${fmtLoot(lootFor(tier.usd))} $LOOT & Boost`}
+            {state === 'paying' ? 'Confirm in wallet…' : state === 'verifying' ? 'Verifying payment…' : `Pay ${tier.sol} SOL & Boost`}
           </button>
         ) : (
           <button onClick={() => setVisible(true)} className="btn-primary">Connect Wallet</button>
@@ -151,8 +119,8 @@ export function BoostForm({ games }: { games: BoostGame[] }) {
 
       {err && <p className="rounded-lg border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">{err}</p>}
       <p className="text-center text-xs text-faint">
-        Prices are pegged in USD — the $LOOT amount follows the live price. Half of all boost
-        revenue is burned weekly; the other half funds the community pool.
+        Flat SOL pricing — no token conversion, no surprises. Payment settles to the LootRadar
+        treasury on Solana and your boost activates within seconds of confirmation.
       </p>
     </div>
   );

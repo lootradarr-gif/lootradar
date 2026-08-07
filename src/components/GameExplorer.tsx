@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { GameWithMarket } from '@/lib/games';
 import { GameCard } from './GameCard';
 import { Search } from 'lucide-react';
@@ -14,11 +14,17 @@ const SORTS: { k: Sort; label: string }[] = [
 ];
 
 // Ana sayfa oyun ızgarası — arama + genre + status + sıralama (client, tüm oyunlar zaten yüklü).
+//
+// SAYFALAMA NEDEN VAR: 115 oyunun hepsini birden basmak kart başına 2 görsel (banner+ikon)
+// demekti → tek sayfada ~230 görsel isteği, devasa DOM ve 115 kartın hidrasyonu. Filtreleme
+// ve sıralama HÂLÂ tüm listede çalışır; sadece EKRANA BASILAN sayı sınırlanır.
+const PAGE = 24;
 export function GameExplorer({ games }: { games: GameWithMarket[] }) {
   const [q, setQ] = useState('');
   const [genre, setGenre] = useState('all');
   const [status, setStatus] = useState('all');
   const [sort, setSort] = useState<Sort>('votes');
+  const [limit, setLimit] = useState(PAGE);
 
   const genres = useMemo(() => ['all', ...Array.from(new Set(games.map((g) => g.genre))).sort()], [games]);
   const statuses = useMemo(() => ['all', ...Array.from(new Set(games.map((g) => g.status)))], [games]);
@@ -42,6 +48,12 @@ export function GameExplorer({ games }: { games: GameWithMarket[] }) {
     if (sort === 'new') list.reverse();
     return list;
   }, [games, q, genre, status, sort]);
+
+  // Filtre/sıra değişince baştan başla — yoksa dar bir filtrede "Load more" hayalet kalıyor.
+  useEffect(() => { setLimit(PAGE); }, [q, genre, status, sort]);
+
+  const visible = shown.slice(0, limit);
+  const more = shown.length - visible.length;
 
   const inp = 'rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-acc';
 
@@ -67,9 +79,18 @@ export function GameExplorer({ games }: { games: GameWithMarket[] }) {
       {shown.length === 0 ? (
         <p className="card p-8 text-center text-dim">No games match your search.</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {shown.map((g, i) => <GameCard key={g.id} g={g} i={i} />)}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {visible.map((g, i) => <GameCard key={g.id} g={g} i={i} />)}
+          </div>
+          {more > 0 && (
+            <div className="mt-6 text-center">
+              <button onClick={() => setLimit((n) => n + PAGE)} className="btn-ghost">
+                Load {Math.min(more, PAGE)} more <span className="text-faint">· {more} left</span>
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
